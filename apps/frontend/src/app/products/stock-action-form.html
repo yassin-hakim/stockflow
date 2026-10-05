@@ -1,0 +1,45 @@
+<form class="panel" [formGroup]="form()" (ngSubmit)="submitted.emit()" novalidate>
+  <h2>{{ type() === 'add' ? 'Add' : 'Remove' }} stock</h2>
+  <div class="field">
+    <label [for]="type() + '-quantity'">Quantity ({{ unit() }})</label>
+    <input
+      [id]="type() + '-quantity'"
+      type="number"
+      min="0.001"
+      max="1000000000"
+      step="0.001"
+      formControlName="quantity"
+      required
+      [attr.aria-invalid]="validation() === type() + '-quantity' ? 'true' : null"
+      [attr.aria-describedby]="
+        validation() === type() + '-quantity' ? type() + '-quantity-error' : null
+      "
+    />
+    @if (validation() === type() + '-quantity') {
+      <small class="error" [id]="type() + '-quantity-error'"
+        >Use 0.001–1,000,000,000 with at most three decimals.</small
+      >
+    }
+  </div>
+  <div class="field">
+    <label [for]="type() + '-reason'">Reason</label>
+    <input
+      [id]="type() + '-reason'"
+      formControlName="reason"
+      maxlength="200"
+      required
+      [attr.aria-invalid]="validation() === type() + '-reason' ? 'true' : null"
+      [attr.aria-describedby]="
+        validation() === type() + '-reason' ? type() + '-reason-error' : null
+      "
+    />
+    @if (validation() === type() + '-reason') {
+      <small class="error" [id]="type() + '-reason-error'"
+        >Enter a reason of 1–200 characters.</small
+      >
+    }
+  </div>
+  <button type="submit" [disabled]="submitting()">
+    {{ submitting() ? 'Saving…' : type() === 'add' ? 'Add stock' : 'Remove stock' }}
+  </button>
+</form>

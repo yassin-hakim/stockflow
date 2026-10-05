@@ -7,16 +7,21 @@ import { filter } from 'rxjs';
   selector: 'app-root',
   imports: [RouterOutlet, RouterLink, RouterLinkActive],
   templateUrl: './app.html',
-  styleUrl: './app.css'
+  styleUrl: './app.css',
 })
 export class App {
   constructor() {
-    inject(Router).events.pipe(filter(event => event instanceof NavigationEnd), takeUntilDestroyed()).subscribe(() => {
-      setTimeout(() => {
-        const heading = document.querySelector<HTMLElement>('.shell-main h1');
-        heading?.setAttribute('tabindex', '-1');
-        heading?.focus();
-      }, 0);
-    });
+    inject(Router)
+      .events.pipe(
+        filter((event) => event instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => {
+        setTimeout(() => {
+          const heading = document.querySelector<HTMLElement>('.shell-main h1');
+          heading?.setAttribute('tabindex', '-1');
+          heading?.focus();
+        }, 0);
+      });
   }
 }

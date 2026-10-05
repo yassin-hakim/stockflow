@@ -1,0 +1,119 @@
+<p><a routerLink="/inventory">← Inventory</a></p>
+@if (loading()) {
+  <p role="status">Loading product…</p>
+} @else if (notFound()) {
+  <section class="panel">
+    <h1>Product not found</h1>
+    <p>This product does not exist.</p>
+    <a routerLink="/inventory">Return to inventory</a>
+  </section>
+} @else if (loadError()) {
+  <div class="error" role="alert">{{ loadError() }}</div>
+  <p><button type="button" (click)="reload()">Retry</button></p>
+} @else if (overview(); as stock) {
+  <div class="page-head">
+    <div>
+      <h1>{{ stock.product.name }}</h1>
+      <p class="muted">{{ stock.product.category }} · {{ stock.product.unit }}</p>
+    </div>
+    <span class="status" [class]="'status ' + stock.status">{{ stock.status }}</span>
+  </div>
+  <section class="panel" style="margin-bottom: 1rem">
+    <h2>Current stock</h2>
+    <p style="font-size: 2rem; font-weight: 800; margin-bottom: 0.3rem">
+      {{ stock.quantity }} {{ stock.product.unit }}
+    </p>
+    <p class="muted">
+      Low-stock threshold: {{ stock.product.lowStockThreshold }} {{ stock.product.unit }}
+    </p>
+  </section>
+  @if (message()) {
+    <p class="success" role="status">{{ message() }}</p>
+  }
+  @if (actionError()) {
+    <p class="error" role="alert" tabindex="-1" data-action-error>{{ actionError() }}</p>
+  }
+  @if (uncertain()) {
+    <p class="error" role="alert">
+      An earlier stock request needs confirmation. Retry its original values with the saved key
+      before starting another action.
+    </p>
+    <p>
+      <button type="button" class="secondary" [disabled]="submitting()" (click)="restorePending()">
+        Restore original request
+      </button>
+    </p>
+  }
+  <div class="grid-2" style="margin-bottom: 1rem">
+    <app-stock-action-form
+      type="add"
+      [unit]="stock.product.unit"
+      [form]="addForm"
+      [submitting]="submitting() || recoveryBlocked()"
+      [validation]="validation()"
+      (submitted)="submit('add')"
+    />
+    <app-stock-action-form
+      type="remove"
+      [unit]="stock.product.unit"
+      [form]="removeForm"
+      [submitting]="submitting() || recoveryBlocked()"
+      [validation]="validation()"
+      (submitted)="submit('remove')"
+    />
+  </div>
+  <section class="panel">
+    <h2>Movement history</h2>
+    @if (historyLoading()) {
+      <p role="status">Loading movements…</p>
+    } @else if (historyError()) {
+      <p class="error" role="alert">{{ historyError() }}</p>
+      <button type="button" (click)="loadHistory()">Retry history</button>
+    } @else if (movements().length === 0) {
+      <p class="muted">No stock movements yet.</p>
+    } @else {
+      <div class="table-wrap desktop-table">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Type</th>
+              <th scope="col">Quantity</th>
+              <th scope="col">Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (movement of movements(); track movement.id) {
+              <tr>
+                <td>{{ movement.createdAt | date: 'medium' }}</td>
+                <td>{{ movement.type }}</td>
+                <td>
+                  {{ movement.type === 'ADD' ? '+' : '−' }}{{ movement.quantity }}
+                  {{ stock.product.unit }}
+                </td>
+                <td>{{ movement.reason }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="stack mobile-list">
+        @for (movement of movements(); track movement.id) {
+          <article>
+            <strong
+              >{{ movement.type === 'ADD' ? '+' : '−' }}{{ movement.quantity }}
+              {{ stock.product.unit }}</strong
+            >
+            <div>
+              {{ movement.type }} ·
+              <time [attr.datetime]="movement.createdAt">{{
+                movement.createdAt | date: 'medium'
+              }}</time>
+            </div>
+            <p>{{ movement.reason }}</p>
+          </article>
+        }
+      </div>
+    }
+  </section>
+}

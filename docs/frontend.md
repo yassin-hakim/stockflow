@@ -43,3 +43,7 @@ Use associated labels, keyboard-operable controls, focus management after naviga
 ## Frontend verification
 
 Component tests cover form validation, empty and error states, status rendering, button locking during submission and movement signs. HTTP tests verify that requests target only `/api`, include the idempotency key on stock POST, and reuse it for a retry. End-to-end checks cover product creation, stock changes, history, and rejected removal. See [testing.md](testing.md).
+
+## Pending stock request recovery
+
+Before a stock POST, Angular persists its product ID, action, quantity, normalized reason and idempotency key in tab-scoped session storage. Navigation and refresh restore the original form values and require resolving that request before a different action. A successful response or definite rejection clears the saved request; an uncertain network/server failure preserves it. Closing the browser tab ends this recovery scope. If storage is unavailable, corrupt or cannot be written, the UI prevents an unsafe POST instead of sending an action whose retry identity could be lost.

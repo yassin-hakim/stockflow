@@ -1,4 +1,4 @@
-import type { Product } from '../domain/product';
+import type { Product } from "../domain/product";
 
 export interface ProductRepository {
   insert(product: Product): Promise<void>;

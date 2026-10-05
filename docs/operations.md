@@ -43,6 +43,8 @@ The root npm workspace declares `dev:product`, `dev:inventory`, `dev:bff`, `dev:
 5. Start Product Service, Inventory Service, BFF, audit worker and Angular in separate terminals using their `dev:*` scripts. The audit worker may start before or after stock commands because JetStream stores events.
 6. Open `http://localhost:4200` and follow the [demo](testing.md).
 
+`setup:nats` validates retention limits, discard policy, acknowledgment settings and consumer filters. An older otherwise-compatible stream with `discard: Old` can be upgraded without deleting messages using `node --import tsx scripts/setup-nats.ts --upgrade-discard-policy`. Other incompatible settings are rejected and require investigation; resources are never recreated automatically.
+
 Use the named `mongo-data` and `nats-data` Docker volumes so ordinary restarts preserve the demo state. `docker compose down` stops containers without deleting these volumes. **Destructive local reset:** `docker compose down -v` deletes both volumes and all local Product, Inventory, Audit and JetStream data. Run it only when a clean demo database is explicitly wanted.
 
 ## Complete setup commands

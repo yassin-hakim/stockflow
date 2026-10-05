@@ -1,20 +1,66 @@
-import { connect } from '@nats-io/transport-node';
-import { AckPolicy, DeliverPolicy, RetentionPolicy, StorageType, jetstreamManager } from '@nats-io/jetstream';
+import { connect } from "@nats-io/transport-node";
+import {
+  JetStreamApiError,
+  JetStreamApiCodes,
+  DiscardPolicy,
+  jetstreamManager,
+} from "@nats-io/jetstream";
+import {
+  AUDIT_CONSUMER,
+  AUDIT_CONSUMER_CONFIG,
+  STOCK_STREAM,
+  STOCK_STREAM_CONFIG,
+  assertAuditConsumer,
+  assertStockStream,
+} from "./lib/nats-configuration";
 
 async function main(): Promise<void> {
-  const connection = await connect({ servers: process.env.NATS_URL ?? 'nats://localhost:4222' });
+  const connection = await connect({
+    servers: process.env.NATS_URL ?? "nats://localhost:4222",
+  });
   try {
     const manager = await jetstreamManager(connection);
-    const stream = 'STOCK_EVENTS', durable = 'stock-audit';
-    let info;
-    try { info = await manager.streams.info(stream); }
-    catch { info = await manager.streams.add({ name: stream, subjects: ['inventory.stock.*'], retention: RetentionPolicy.Workqueue, storage: StorageType.File, num_replicas: 1, max_age: 0, max_msgs: -1, max_bytes: -1, duplicate_window: 120_000_000_000 }); }
-    if (info.config.retention !== RetentionPolicy.Workqueue || info.config.storage !== StorageType.File || info.config.num_replicas !== 1 || JSON.stringify(info.config.subjects) !== JSON.stringify(['inventory.stock.*']) || info.config.max_age !== 0 || info.config.max_msgs !== -1) throw new Error('Existing STOCK_EVENTS stream has incompatible settings.');
+    let stream;
+    try {
+      stream = await manager.streams.info(STOCK_STREAM);
+    } catch (error) {
+      if (
+        !(error instanceof JetStreamApiError) ||
+        error.code !== JetStreamApiCodes.StreamNotFound
+      )
+        throw error;
+      stream = await manager.streams.add(STOCK_STREAM_CONFIG);
+    }
+    if (
+      process.argv.includes("--upgrade-discard-policy") &&
+      stream.config.discard === DiscardPolicy.Old
+    ) {
+      // Upgrade only this safe policy change, after validating every other field.
+      // Retained events are never deleted or resources recreated.
+      assertStockStream({ ...stream.config, discard: DiscardPolicy.New });
+      stream = await manager.streams.update(STOCK_STREAM, {
+        discard: DiscardPolicy.New,
+      });
+    }
+    assertStockStream(stream.config);
     let consumer;
-    try { consumer = await manager.consumers.info(stream, durable); }
-    catch { consumer = await manager.consumers.add(stream, { durable_name: durable, ack_policy: AckPolicy.Explicit, deliver_policy: DeliverPolicy.All, max_deliver: -1, backoff: [1, 5, 30, 300].map(seconds => seconds * 1_000_000_000) }); }
-    if (consumer.config.ack_policy !== AckPolicy.Explicit || consumer.config.durable_name !== durable || consumer.config.deliver_policy !== DeliverPolicy.All || consumer.config.max_deliver !== -1 || JSON.stringify(consumer.config.backoff) !== JSON.stringify([1, 5, 30, 300].map(seconds => seconds * 1_000_000_000))) throw new Error('Existing stock-audit consumer has incompatible settings.');
-    process.stdout.write(`Ready: ${stream} / ${durable}\n`);
-  } finally { await connection.drain(); }
+    try {
+      consumer = await manager.consumers.info(STOCK_STREAM, AUDIT_CONSUMER);
+    } catch (error) {
+      if (
+        !(error instanceof JetStreamApiError) ||
+        error.code !== JetStreamApiCodes.ConsumerNotFound
+      )
+        throw error;
+      consumer = await manager.consumers.add(
+        STOCK_STREAM,
+        AUDIT_CONSUMER_CONFIG,
+      );
+    }
+    assertAuditConsumer(consumer.config);
+    process.stdout.write(`Ready: ${STOCK_STREAM} / ${AUDIT_CONSUMER}\n`);
+  } finally {
+    await connection.drain();
+  }
 }
 void main();

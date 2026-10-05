@@ -10,7 +10,7 @@
     "piscina": "5.3.2"
   },
   "scripts": {
-    "build": "npm run build -w @stockflow/contracts && npm run build -w @stockflow/product-service && npm run build -w @stockflow/inventory-service && npm run build -w @stockflow/bff && npm run build -w @stockflow/audit-worker && npm run build -w @stockflow/frontend",
+    "build": "npm run build -w @stockflow/primitives && npm run build -w @stockflow/contracts && npm run build -w @stockflow/product-service && npm run build -w @stockflow/inventory-service && npm run build -w @stockflow/bff && npm run build -w @stockflow/audit-worker && npm run build -w @stockflow/frontend",
     "test": "vitest run",
     "dev:product": "npm run dev -w @stockflow/product-service",
     "dev:inventory": "npm run dev -w @stockflow/inventory-service",
@@ -28,7 +28,9 @@
     "verify:ui-records": "tsx scripts/verify-ui-records.ts",
     "verify:product-reload": "tsx scripts/verify-product-reload.ts",
     "verify:nats-outage": "tsx scripts/verify-nats-outage.ts",
-    "verify:infrastructure-restart": "tsx --tsconfig tsconfig.backend.json scripts/verify-infrastructure-restart.ts"
+    "verify:infrastructure-restart": "tsx --tsconfig tsconfig.backend.json scripts/verify-infrastructure-restart.ts",
+    "verify:review": "tsx --tsconfig tsconfig.backend.json scripts/verify-review-fixes.ts",
+    "verify:shutdown": "tsx --tsconfig tsconfig.backend.json scripts/verify-service-shutdown.ts"
   },
   "devDependencies": {
     "@types/node": "22.16.0",

@@ -1,6 +1,6 @@
-import type { Collection, MongoClient } from 'mongodb';
-import type { ProductRepository } from '../application/product-repository';
-import type { Product } from '../domain/product';
+import type { Collection, MongoClient } from "mongodb";
+import type { ProductRepository } from "../application/product-repository";
+import type { Product } from "../domain/product";
 
 interface ProductDocument {
   _id: string;
@@ -16,7 +16,7 @@ export class MongoProductRepository implements ProductRepository {
   private readonly collection: Collection<ProductDocument>;
 
   constructor(client: MongoClient) {
-    this.collection = client.db().collection<ProductDocument>('products');
+    this.collection = client.db().collection<ProductDocument>("products");
   }
 
   async insert(product: Product): Promise<void> {
@@ -34,7 +34,7 @@ export class MongoProductRepository implements ProductRepository {
   }
 }
 
-function withoutId(product: Product): Omit<Product, 'id'> {
+function withoutId(product: Product): Omit<Product, "id"> {
   const { id: _id, ...fields } = product;
   return fields;
 }
