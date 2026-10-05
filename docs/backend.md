@@ -6,7 +6,10 @@ The three HTTP apps are independent NestJS processes: BFF, Product Service and I
 
 ```text
 apps/bff/src/
-├── bff.module.ts    frontend controllers, validation, providers and health
+├── bff.module.ts    provider wiring and controller registration
+├── products-controller.ts / inventory-controller.ts  frontend HTTP routes
+├── health-controller.ts   liveness and upstream readiness
+├── validation.ts / configuration.ts  boundary validation and settings
 ├── upstream.ts      typed internal HTTP client
 ├── projection.ts    product/balance dashboard join and status
 ├── http-filter.ts   public error mapping

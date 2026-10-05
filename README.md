@@ -57,6 +57,7 @@ This is an npm workspace. The two business services keep their domain, applicati
 | `apps/inventory-service` | Stock domain, transactions, movements, outbox and NATS publisher |
 | `apps/audit-worker` | NestJS application context, durable event consumer and audit repository |
 | `packages/contracts` | Shared HTTP and event types; business rules stay in their owning service |
+| `packages/primitives` | Pure quantity and UUID helpers; its prepare script builds the runtime package during installation |
 | `scripts` | Infrastructure setup, boundary/link checks and integration verifiers |
 | `docs` / `implementation` | System documentation, build phases and recorded verification |
 

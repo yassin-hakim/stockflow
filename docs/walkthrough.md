@@ -38,7 +38,7 @@ One MongoDB server hosts three databases, each accessed only by its owner in app
 
 [BffApi.listInventory](../apps/frontend/src/app/core/bff-api.ts) sends `GET /api/inventory`. Angular's [development proxy](../apps/frontend/proxy.conf.json) sends `/api` to port 3000.
 
-The BFF's [inventory controller](../apps/bff/src/bff.module.ts) fetches `GET /products` from Product Service and `GET /inventory` from Inventory Service. [projectInventory](../apps/bff/src/projection.ts) joins them by product ID and sorts by product name. A known product without a stored balance is projected as zero. An unavailable Inventory Service produces an error and a UI retry state.
+The BFF's [inventory controller](../apps/bff/src/inventory-controller.ts) fetches `GET /products` from Product Service and `GET /inventory` from Inventory Service. [projectInventory](../apps/bff/src/projection.ts) joins them by product ID and sorts by product name. A known product without a stored balance is projected as zero. An unavailable Inventory Service produces an error and a UI retry state.
 
 The BFF computes status: `OUT` at zero, `LOW` for positive stock at or below a positive threshold, otherwise `OK`. Angular displays the returned status.
 
@@ -58,7 +58,7 @@ Angular navigates to the created product's detail page. The BFF confirms the Pro
 
 Enter quantity `50`, reason `Supplier delivery`, then select **Add stock**.
 
-1. [ProductDetail.submit](../apps/frontend/src/app/products/product-detail.ts) generates an idempotency-key UUID, locks both submit buttons and calls the typed BFF client.
+1. [ProductDetail.submit](../apps/frontend/src/app/products/product-detail.ts) generates an idempotency-key UUID and saves the normalized request through [PendingStockCommands](../apps/frontend/src/app/core/pending-stock-commands.ts) before sending it. It locks both submit buttons and calls the typed BFF client. Tab-scoped storage preserves the original command across navigation and refresh.
 2. The BFF forwards `POST /api/inventory/:productId/add` to Inventory Service `POST /inventory/:productId/add`, preserving the key.
 3. [InventoryController](../apps/inventory-service/src/presentation/inventory-controller.ts) validates UUIDs/body/reason and calls [toMillis](../apps/inventory-service/src/domain/stock.ts): `50 kg` becomes `50000` milliunits.
 4. [StockUseCases.change](../apps/inventory-service/src/application/stock-use-cases.ts) first looks up an earlier result by key. It loads the balance and, for this first addition, checks Product through [HttpProductCatalog](../apps/inventory-service/src/infrastructure/product-http-client.ts).

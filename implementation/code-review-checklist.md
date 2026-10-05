@@ -32,7 +32,7 @@ Requested on 2026-10-05. Check an item only after its implementation and relevan
 
 ## Evidence
 
-All 19 checklist items are implemented and verified. Changes remain local.
+All 19 checklist items are implemented and verified. The reviewed changes are included in the repository alongside the company reviewer setup fixes.
 
 ### Implementation evidence
 
@@ -57,3 +57,7 @@ All 19 checklist items are implemented and verified. Changes remain local.
 - Architecture boundary checks and all 368 documentation links passed. The new verification/setup scripts passed strict TypeScript checks; `git diff --check` passed.
 - Dependency installation ran the shared package's `prepare` build successfully; the package is ready for development from a fresh checkout.
 - Final source audit distinguished 24 formatting-only TypeScript files from the intended behavior changes. Each correctness and cleanup item above was matched to implementation and regression/live evidence; no requested item remains open.
+
+### Publication verification
+
+After merging the fresh-install and company reviewer setup commit, the full workspace build passed, as did 90 backend tests across 12 files and 18 Angular tests across 6 files. Architecture boundary and documentation-link checks passed. The merge preserved `npm run configure`, runtime-version declarations, automatic MongoDB-primary waiting and `.env` loading in all four compiled backend start scripts.
