@@ -6,7 +6,7 @@
     "dev": "node --watch --env-file=.env --import tsx src/main.ts",
     "build": "tsc -p tsconfig.json",
     "test": "vitest run --root ../.. apps/inventory-service/test",
-    "start": "node dist/main.js"
+    "start": "node --env-file=.env dist/main.js"
   },
   "dependencies": {
     "@nestjs/common": "12.1.2",

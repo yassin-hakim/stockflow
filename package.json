@@ -2,6 +2,11 @@
   "name": "stockflow",
   "private": true,
   "version": "0.1.0",
+  "engines": {
+    "node": ">=22.16.0 <23",
+    "npm": ">=10.9.2 <11"
+  },
+  "packageManager": "npm@10.9.2",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -12,6 +17,7 @@
   "scripts": {
     "build": "npm run build -w @stockflow/contracts && npm run build -w @stockflow/product-service && npm run build -w @stockflow/inventory-service && npm run build -w @stockflow/bff && npm run build -w @stockflow/audit-worker && npm run build -w @stockflow/frontend",
     "test": "vitest run",
+    "configure": "node scripts/configure.mjs",
     "dev:product": "npm run dev -w @stockflow/product-service",
     "dev:inventory": "npm run dev -w @stockflow/inventory-service",
     "dev:bff": "npm run dev -w @stockflow/bff",

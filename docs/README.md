@@ -20,6 +20,8 @@ The separate [implementation guide](../implementation/README.md) breaks this des
 
 | Document | Coverage |
 | --- | --- |
+| [Company reviewer setup](review-guide.md) | Required tools, fresh install, five-process startup and acceptance demo |
+| [Fresh-clone review verification](review-verification.md) | Clean dependency install, fresh infrastructure, compiled/development startup and stock-flow results |
 | [App and code walkthrough](walkthrough.md) | Employee screens and a complete product/stock/event trace through the actual source |
 | [Requirements](requirements.md) | Product scope, non-goals, acceptance and source-spec traceability |
 | [Architecture](architecture.md) | Microservices, BFF, boundaries, deployment and end-to-end paths |

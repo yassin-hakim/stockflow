@@ -34,11 +34,11 @@ The Inventory and Audit Mongo URIs use their respective database names `stockflo
 
 ## Startup sequence
 
-The root npm workspace declares `dev:product`, `dev:inventory`, `dev:bff`, `dev:audit`, `dev:frontend`, `setup:mongo`, and `setup:nats`. Copy each backend `.env.example` to `.env` before starting its `dev:*` script. The sequence below was verified using Docker Compose through WSL with host-run applications.
+The root npm workspace declares `configure`, `dev:product`, `dev:inventory`, `dev:bff`, `dev:audit`, `dev:frontend`, `setup:mongo`, and `setup:nats`. Run `npm run configure` to create missing backend `.env` files before starting applications. The sequence below was verified using Docker Compose through WSL with host-run applications.
 
-1. Install locked Node dependencies with `npm ci`.
+1. Install locked Node dependencies with `npm ci`, then run `npm run configure`.
 2. Start infrastructure with `docker compose up -d --wait`.
-3. Run `npm run setup:mongo`. It initializes `rs0` on the first run and validates the existing replica set on later runs. Wait for a primary before starting the services.
+3. Run `npm run setup:mongo`. It initializes `rs0` on the first run, validates it on later runs, and waits up to 30 seconds for a writable primary before returning success.
 4. Run `npm run setup:nats` to idempotently create the file-backed `STOCK_EVENTS` stream and `stock-audit` durable consumer as specified in [events.md](events.md).
 5. Start Product Service, Inventory Service, BFF, audit worker and Angular in separate terminals using their `dev:*` scripts. The audit worker may start before or after stock commands because JetStream stores events.
 6. Open `http://localhost:4200` and follow the [demo](testing.md).
@@ -49,7 +49,7 @@ Use the named `mongo-data` and `nats-data` Docker volumes so ordinary restarts p
 
 ### Prerequisites and installation
 
-Use Git, Node.js 22 with npm 10, and Docker with the Compose plugin. Verification used Node 22.16.0 and npm 10.9.2. Check `node --version`, `npm --version`, `git --version` and `docker compose version`. MongoDB and NATS run in containers; the root install supplies the Angular CLI. Ports 3000, 3001, 3002, 4200, 27017, 4222 and 8222 must be free.
+Use Git, Node.js 22.16 or later within version 22, npm 10.9.2 or later within version 10, and Docker with the Compose v2 plugin. Verification used Node 22.16.0 and npm 10.9.2. Check `node --version`, `npm --version`, `git --version` and `docker compose version`. MongoDB and NATS run in containers; the root install supplies the Angular CLI. Ports 3000, 3001, 3002, 4200, 27017, 4222 and 8222 must be free.
 
 ```sh
 git clone https://github.com/yassin-hakim/stockflow.git
@@ -57,7 +57,7 @@ cd stockflow
 npm ci
 ```
 
-Create environment files on first setup. In PowerShell:
+Create environment files on first setup with `npm run configure`. It works across supported shells and preserves existing files. If copying manually instead, use PowerShell:
 
 ```powershell
 Copy-Item apps/product-service/.env.example apps/product-service/.env
@@ -87,7 +87,7 @@ npm run setup:nats
 docker compose ps
 ```
 
-The MongoDB check must print `true`. `setup:mongo` initializes or validates the replica-set configuration; it does not wait for election, so repeat the primary check if it initially prints `false`. Both containers should be healthy. `setup:nats` confirms the stream and durable consumer are ready and refuses incompatible existing settings. Both setup commands are safe to repeat against the intended local resources.
+The MongoDB check must print `true`. `setup:mongo` initializes or validates the replica-set configuration and waits up to 30 seconds for a writable primary. The `mongosh` check is an optional confirmation after successful setup. Both containers should be healthy. `setup:nats` confirms the stream and durable consumer are ready and refuses incompatible existing settings. Both setup commands are safe to repeat against the intended local resources.
 
 ### Windows with Docker in WSL
 
@@ -115,6 +115,8 @@ Open five terminals in the repository root and run one process in each:
 | Frontend | `npm run dev:frontend` | Open `http://localhost:4200` |
 
 Product and Inventory must be ready before BFF readiness succeeds. The frontend displays a retry state if APIs are unavailable. The audit worker can start after stock operations because the durable consumer retains pending events.
+
+For a review using built backend JavaScript, run `npm run build` first, then use `npm run start -w @stockflow/product-service`, `npm run start -w @stockflow/inventory-service`, `npm run start -w @stockflow/bff`, and `npm run start -w @stockflow/audit-worker` in four terminals. These start scripts load their workspace `.env` files. Angular can still use `npm run dev:frontend`; serving its production bundle requires a static server with an `/api` proxy, which is outside this local setup.
 
 Check readiness in PowerShell:
 
