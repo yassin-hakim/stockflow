@@ -1,4 +1,4 @@
-# Local operation and deployment design
+# Local setup and operation
 
 > The five host-run applications and the full workflow passed against the pinned Docker Compose containers. A MongoDB marker and pending JetStream delivery survived `docker compose down` followed by `docker compose up -d --wait`; the audit worker then consumed the retained event.
 
@@ -45,6 +45,97 @@ The root npm workspace declares `dev:product`, `dev:inventory`, `dev:bff`, `dev:
 
 Use the named `mongo-data` and `nats-data` Docker volumes so ordinary restarts preserve the demo state. `docker compose down` stops containers without deleting these volumes. **Destructive local reset:** `docker compose down -v` deletes both volumes and all local Product, Inventory, Audit and JetStream data. Run it only when a clean demo database is explicitly wanted.
 
+## Complete setup commands
+
+### Prerequisites and installation
+
+Use Git, Node.js 22 with npm 10, and Docker with the Compose plugin. Verification used Node 22.16.0 and npm 10.9.2. Check `node --version`, `npm --version`, `git --version` and `docker compose version`. MongoDB and NATS run in containers; the root install supplies the Angular CLI. Ports 3000, 3001, 3002, 4200, 27017, 4222 and 8222 must be free.
+
+```sh
+git clone https://github.com/yassin-hakim/stockflow.git
+cd stockflow
+npm ci
+```
+
+Create environment files on first setup. In PowerShell:
+
+```powershell
+Copy-Item apps/product-service/.env.example apps/product-service/.env
+Copy-Item apps/inventory-service/.env.example apps/inventory-service/.env
+Copy-Item apps/bff/.env.example apps/bff/.env
+Copy-Item apps/audit-worker/.env.example apps/audit-worker/.env
+```
+
+In a POSIX shell:
+
+```sh
+cp apps/product-service/.env.example apps/product-service/.env
+cp apps/inventory-service/.env.example apps/inventory-service/.env
+cp apps/bff/.env.example apps/bff/.env
+cp apps/audit-worker/.env.example apps/audit-worker/.env
+```
+
+The defaults match the local topology above. Preserve edited `.env` files on later startups. The frontend uses its checked-in `/api` proxy and needs no `.env` file.
+
+### Infrastructure initialization
+
+```sh
+docker compose up -d --wait
+npm run setup:mongo
+docker compose exec -T mongo mongosh --quiet --eval 'db.hello().isWritablePrimary'
+npm run setup:nats
+docker compose ps
+```
+
+The MongoDB check must print `true`. `setup:mongo` initializes or validates the replica-set configuration; it does not wait for election, so repeat the primary check if it initially prints `false`. Both containers should be healthy. `setup:nats` confirms the stream and durable consumer are ready and refuses incompatible existing settings. Both setup commands are safe to repeat against the intended local resources.
+
+### Windows with Docker in WSL
+
+Docker Desktop users with Docker available in PowerShell can use the commands above. On the verified workstation Docker was available in WSL Ubuntu while Node and the application processes ran in Windows. From PowerShell, this checkout used:
+
+```powershell
+wsl --user root --exec docker compose -f /mnt/c/Projects/interview/docker-compose.yml up -d --wait
+npm run setup:mongo
+wsl --user root --exec docker compose -f /mnt/c/Projects/interview/docker-compose.yml exec -T mongo mongosh --quiet --eval 'db.hello().isWritablePrimary'
+npm run setup:nats
+```
+
+Replace `/mnt/c/Projects/interview/docker-compose.yml` with the WSL path to your checkout. `--user root` reflects the verified workstation's Docker permissions; use your WSL user if it already has access. Run npm commands in PowerShell from the Windows repository root. Windows must reach the published ports through `localhost`; if that fails, check WSL localhost forwarding and Docker's published ports before changing database hostnames. Keep replica-set member `localhost:27017` consistent with the host-run MongoDB URIs.
+
+### Start the applications
+
+Open five terminals in the repository root and run one process in each:
+
+| Terminal | Command | Ready indication |
+| --- | --- | --- |
+| Product | `npm run dev:product` | HTTP 200 at port 3001 `/health/ready` |
+| Inventory | `npm run dev:inventory` | HTTP 200 at port 3002 `/health/ready` |
+| BFF | `npm run dev:bff` | HTTP 200 at port 3000 `/health/ready` |
+| Audit | `npm run dev:audit` | `Attached to stock-audit durable consumer` log |
+| Frontend | `npm run dev:frontend` | Open `http://localhost:4200` |
+
+Product and Inventory must be ready before BFF readiness succeeds. The frontend displays a retry state if APIs are unavailable. The audit worker can start after stock operations because the durable consumer retains pending events.
+
+Check readiness in PowerShell:
+
+```powershell
+Invoke-RestMethod http://localhost:3001/health/ready
+Invoke-RestMethod http://localhost:3002/health/ready
+Invoke-RestMethod http://localhost:3000/health/ready
+```
+
+Readiness returns `status: ready`; Inventory readiness also includes `pendingOutbox` and `natsConnected`. NATS being disconnected does not make stock commands unavailable when MongoDB is healthy. Create a product and follow the [walkthrough](walkthrough.md). No seed step is required; the initial database is empty. Subsequent starts retain products and movements.
+
+### Stop and restart
+
+Stop host applications with Ctrl+C. `docker compose down` stops infrastructure while retaining volumes. With WSL-only Docker, use:
+
+```powershell
+wsl --user root --exec docker compose -f /mnt/c/Projects/interview/docker-compose.yml down
+```
+
+To resume, start Compose, repeat setup and the primary check, then start the five processes. `npm run build` creates artifacts; it does not start servers or publish a hosted app. GitHub contains the source and runbook, while the running demo is local.
+
 ## Tested version matrix
 
 | Component | Version / source |
@@ -75,12 +166,18 @@ The repeatable NATS outage verifier proves stock commits independently of broker
 
 Each HTTP service exposes `GET /health/live` for process liveness and `GET /health/ready` for required dependency readiness. BFF readiness checks its two upstream services; Product and Inventory check MongoDB. Inventory reports NATS connectivity and pending-outbox count separately because stock commands remain valid while NATS is temporarily down. The audit worker logs startup, JetStream consumer attachment, processed event IDs and failures. NATS monitoring and the `nats` CLI can show stream and consumer state; MongoDB queries can show pending outbox count and deduplicated audit rows.
 
-Use a propagated `requestId` for the Angular→BFF→service HTTP path and log product ID, movement ID, event ID and idempotency key at appropriate boundaries. Do not log full database credentials or raw stack traces to the browser. A successful stock HTTP response proves the MongoDB commit; audit completion is observed separately.
+The BFF propagates `X-Request-ID` to internal HTTP calls; response headers and error envelopes carry it. Automatic request logging is not implemented. The relay logs event ID, subject and PubAck stream/sequence; the worker logs attachment counts, audited and duplicate event IDs, errors and reconnect attempts. Public errors exclude credentials and raw stack traces. Stock HTTP success proves the MongoDB commit; audit completion is observed separately.
+
+Run `npx tsx scripts/inspect-nats.ts` from the root for current stream-message, pending, acknowledgment-pending and redelivery counts. Inventory's `GET /health/ready` includes `pendingOutbox` and the publisher's `natsConnected` state. NATS monitoring is available at `http://localhost:8222/varz` and `http://localhost:8222/jsz`, bound to localhost by Compose. Worker attachment counts are a startup snapshot rather than continuous lag monitoring.
 
 ## Recovery guide
 
 | Symptom | Check | Expected recovery |
 | --- | --- | --- |
+| `docker` is not recognized in PowerShell | Docker installation and WSL `docker compose version` | Use the WSL commands above if Docker is installed there |
+| Port is already in use | Compose port errors or app `EADDRINUSE`; existing processes | Stop the conflicting process or update the app port and corresponding client/proxy URLs together |
+| `npm ci` fails | Node/npm versions and lockfile installation error | Use the tested Node/npm versions and retry the locked install |
+| `stock-audit` consumer is missing | Whether `setup:nats` completed | Run `npm run setup:nats`; the worker reconnects to the existing durable consumer |
 | MongoDB transaction error | `rs.status()`, service URI and readiness | Ensure `rs0` is initialized and reachable; retry after dependency recovery |
 | Product creation fails | Product Service readiness and `stockflow_product` connection | Restore Product Service or MongoDB, then resubmit |
 | Inventory view fails | BFF and Inventory readiness | Show UI error; never display missing service data as zero |

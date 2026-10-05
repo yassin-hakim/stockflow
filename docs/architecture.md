@@ -69,16 +69,16 @@ sequenceDiagram
   UI->>BFF: POST /api/inventory/:id/add + Idempotency-Key
   BFF->>I: Forward command and key
   I->>P: Check product if balance is absent
-  I->>I: AddStockUseCase -> InventoryItem.addStock
+  I->>I: StockUseCases.change(ADD) -> InventoryItem.addStock
   I->>DB: Commit balance + movement + outbox
   I-->>BFF: Committed result
   BFF-->>UI: Updated balance and movement
   I-->>JS: Relay pending StockAdded; wait for PubAck
   JS-->>A: Deliver event
-  A->>A: Upsert eventId; acknowledge after commit
+  A->>A: Insert/deduplicate eventId; acknowledge after write
 ```
 
-Remove uses the same path with `RemoveStockUseCase`, `StockRemoved`, and the removed subject. If quantity is invalid or insufficient, the domain rejects before any commit. If concurrent removals race, version-checked persistence retries the entire use case against the latest balance and returns `INSUFFICIENT_STOCK` when appropriate. If NATS is unavailable after a successful commit, the HTTP command remains successful, its outbox record stays pending, and the relay retries. This separates command success from audit delivery timing while preserving eventual publication. [Events](events.md) defines recovery and duplicate handling.
+Remove uses the same path with `StockUseCases.change` receiving `REMOVE`, `StockRemoved`, and the removed subject. If quantity is invalid or insufficient, the domain rejects before any commit. If concurrent removals race, version-checked persistence retries the entire use case against the latest balance and returns `INSUFFICIENT_STOCK` when appropriate. If NATS is unavailable after a successful commit, the HTTP command remains successful, its outbox record stays pending, and the relay retries. This separates command success from audit delivery timing while preserving eventual publication. [Events](events.md) defines recovery and duplicate handling.
 
 ```mermaid
 sequenceDiagram
@@ -93,7 +93,7 @@ sequenceDiagram
   UI->>BFF: POST /api/inventory/:id/remove + Idempotency-Key
   BFF->>I: Forward command and key
   I->>DB: Load current balance and prior idempotency result
-  I->>I: RemoveStockUseCase -> InventoryItem.removeStock
+  I->>I: StockUseCases.change(REMOVE) -> InventoryItem.removeStock
   alt Sufficient stock
     I->>DB: Transaction: balance + movement + pending outbox
     I-->>BFF: Committed result
@@ -113,8 +113,8 @@ sequenceDiagram
 | Action | Synchronous path and commit | Asynchronous result |
 | --- | --- | --- |
 | Create product | Angular form → `POST /api/products` → BFF → Product `CreateProduct` → Product domain validation → `ProductRepository` → `stockflow_product.products`; dashboard left join then shows logical zero | No stock movement, outbox row or NATS event is created by product creation. |
-| Add stock | Angular form → BFF add route → Inventory `AddStock` → `Quantity` and `InventoryItem.addStock` → MongoDB transaction writes balance, movement and pending outbox row | Relay publishes `inventory.stock.added`; JetStream delivers `StockAdded`; audit worker writes by event ID, then acknowledges. |
-| Remove stock | Angular form → BFF remove route → Inventory `RemoveStock` → `Quantity` and `InventoryItem.removeStock` → same atomic Inventory transaction | Relay publishes `inventory.stock.removed`; JetStream delivers `StockRemoved`; audit worker writes by event ID, then acknowledges. |
+| Add stock | Angular form → BFF add route → `toMillis` → Inventory `StockUseCases.change(ADD)` → `InventoryItem.addStock` → MongoDB transaction writes balance, movement and pending outbox row | Relay publishes `inventory.stock.added`; JetStream delivers `StockAdded`; audit worker writes by event ID, then acknowledges. |
+| Remove stock | Angular form → BFF remove route → `toMillis` → Inventory `StockUseCases.change(REMOVE)` → `InventoryItem.removeStock` → same atomic Inventory transaction | Relay publishes `inventory.stock.removed`; JetStream delivers `StockRemoved`; audit worker writes by event ID, then acknowledges. |
 | Reject removal | The same HTTP path reaches `InventoryItem.removeStock`, which rejects overdraw with `409 INSUFFICIENT_STOCK`; UI refreshes the balance | No transaction, movement, outbox row, JetStream message or audit record for the rejected request. |
 
 ## Why these choices

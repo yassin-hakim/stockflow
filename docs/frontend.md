@@ -14,7 +14,7 @@ The Angular application is the user-facing client for the inventory demo. Use st
 | `/products/:id` | Product detail | Product summary, current stock/status, add/remove forms, movement history |
 | Unknown route | Not-found view | Clear return link to dashboard |
 
-Suggested feature folders are `inventory`, `products`, `shared`, and `core`. `core` owns the typed BFF client and API error parsing; feature components own only presentation and view state. Keep this app small: no global store is needed. The dashboard loads `GET /api/inventory`; detail loads product overview and movement history. The creation form calls `POST /api/products` and navigates to the new product detail after success.
+The implemented feature folders are `inventory`, `products`, `shared`, and `core`. `core` owns the single typed `BffApi` client and `describeError` error parsing; feature components own presentation and view state through signals and reactive forms. There is no global store. The dashboard loads `GET /api/inventory`; detail loads product overview and movement history. The creation form calls `POST /api/products` and navigates to the new product detail after success.
 
 ## Dashboard
 
@@ -26,7 +26,7 @@ Status is display data supplied by the BFF. The UI must not recompute threshold 
 
 The Product form requires trimmed name, unit and category and accepts an optional low-stock threshold defaulting to `0`. Labels and inline validation explain the expected lengths and up-to-three-decimal quantity format. After creating a product, its detail view shows zero stock and an empty history. Product unit cannot be edited in v1.
 
-On the detail page, show separate Add Stock and Remove Stock forms, side by side on wide screens and stacked on narrow screens. Each includes quantity and reason, a clear action label, and a confirmation state. Quantity input supports up to three decimal places; client validation helps the employee but never replaces API/domain validation. Remove does not optimistically decrement stock. Disable both stock submit buttons while one request is pending. For each deliberate submission, generate a UUID `Idempotency-Key`; if the request times out and the employee retries the same input, reuse the key. Generate a new key after a confirmed success or changed input.
+On the detail page, show separate Add Stock and Remove Stock forms, side by side on wide screens and stacked on narrow screens. Each includes quantity and reason, a clear action label, and a confirmation state. Quantity input supports up to three decimal places; client validation helps the employee but never replaces API/domain validation. Remove does not optimistically decrement stock. Disable both stock submit buttons while one request is pending. For each deliberate submission, generate a UUID `Idempotency-Key`; if the request times out and the employee retries the same input, reuse the key. While the prior outcome is uncertain, changed input is blocked until that original command is resolved. After a confirmed outcome, a new deliberate command receives a new key.
 
 When a stock action succeeds, show the committed result and refetch overview plus movement history. The asynchronous audit event is not used to decide whether the form succeeded. On `INSUFFICIENT_STOCK`, show the server message and refresh the balance; on `IDEMPOTENCY_CONFLICT`, explain that the request identity was reused and require a new submission key. Preserve entered values after a recoverable error.
 
@@ -36,7 +36,7 @@ Display date/time, type, signed display quantity with product unit, and reason. 
 
 ## State, errors and accessibility
 
-Each remote view has explicit loading, success-empty, success-with-data and failure states. A stock action additionally has submitting and committed states. Use typed interfaces from [API](api.md), keep `HttpClient` calls in one feature client per route group, and unsubscribe or use Angular's lifecycle-aware utilities. A shared error component translates the stable API code to concise text; raw infrastructure messages never appear.
+Each remote view has explicit loading, success-empty, success-with-data and failure states. A stock action additionally has submitting and committed states. `BffApi` uses shared contract types and Angular `HttpClient`, exposed as promises with `firstValueFrom`; router subscriptions use `takeUntilDestroyed`. The shared `describeError` function translates stable API errors to concise text rendered by the feature components; there is no separate error component. Raw infrastructure messages never appear.
 
 Use associated labels, keyboard-operable controls, focus management after navigation or errors, and an announced status region for submission results. Place validation beside fields and identify fields in the error summary. The interface should work at mobile width without horizontal form overflow. The project intentionally has no login or authorization screen.
 

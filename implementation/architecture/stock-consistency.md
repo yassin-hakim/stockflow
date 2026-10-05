@@ -4,7 +4,7 @@ Implement the command path described in [domain](../../docs/domain.md), [persist
 
 ## Command sequence
 
-1. Inventory presentation validates request shape, converts quantity to milliunits and passes a normalized command plus idempotency key to `AddStock` or `RemoveStock`.
+1. Inventory presentation validates request shape, converts quantity with `toMillis` and passes a normalized command plus idempotency key to `StockUseCases.change` with type `ADD` or `REMOVE`.
 2. The use case looks up an existing movement by key. The same product/action/amount/normalized reason returns its original `StockChangeResult`; different input returns `IDEMPOTENCY_CONFLICT`.
 3. Load current InventoryItem. If absent, an add verifies Product through `ProductCatalog` and starts from zero; a remove rejects as `INSUFFICIENT_STOCK` without writing.
 4. Call `InventoryItem.addStock` or `.removeStock`. Only a valid change yields a new balance and `StockAdded` or `StockRemoved` domain event.
@@ -18,7 +18,7 @@ No cross-service transaction is attempted. Product existence is checked before o
 
 The Inventory relay is one process instance in the local design. It polls due pending outbox rows every 500 ms, at most 100 per batch. It publishes the stored v1 event envelope to `inventory.stock.added` or `inventory.stock.removed` with JetStream message ID equal to `eventId`. After `PubAck`, it marks the row published. On failure, the row remains pending with attempt count and retry delay (1 s, 5 s, 30 s, then 5 min). A crash after publish but before marking may publish twice.
 
-`setup:nats` creates `STOCK_EVENTS` with file storage, one replica, WorkQueue retention and subjects `inventory.stock.*`, plus one durable explicit-acknowledgment pull consumer `stock-audit`. Do not automatically evict unacknowledged events by age or count; if disk fills, the outbox must continue to retry. The audit worker validates the v1 envelope, upserts by `eventId`, compares duplicate payloads, and acknowledges only after a successful identical stored result. Different payload under the same event ID or malformed/unsupported events stay unacknowledged and are logged for investigation.
+`setup:nats` creates `STOCK_EVENTS` with file storage, one replica, WorkQueue retention and subjects `inventory.stock.*`, plus one durable explicit-acknowledgment pull consumer `stock-audit`. It does not automatically evict unacknowledged events by age or count; if disk fills, the outbox continues to retry. The audit worker validates the v1 envelope, inserts with `_id = eventId`, compares payloads after duplicate-key failures, and acknowledges only after a successful identical stored result. Different payload under the same event ID or malformed/unsupported events stay unacknowledged and are logged for investigation.
 
 ## Failure outcomes
 

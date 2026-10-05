@@ -12,9 +12,11 @@ Use cases: `CreateProduct`, `ListProducts`, `GetProduct`. `ProductRepository` pr
 
 ### Inventory model
 
-`InventoryItem`: `productId`, `quantityMillis`, `version`, `createdAt`, `updatedAt`. Domain methods `addStock(quantityMillis)` and `removeStock(quantityMillis)` return a new valid balance and a domain event. They reject amounts ≤ 0, resulting balance > `1,000,000,000,000` milliunits, and removals larger than the current balance. `StockMovement`: `id`, `productId`, `type` (`ADD`/`REMOVE`), `quantityMillis`, `reason`, `resultingQuantityMillis`, `idempotencyKey`, `createdAt`. `StockAdded` and `StockRemoved` are domain events created only for successful changes.
+`InventoryItem` wraps an `InventoryItemState`: `productId`, `quantityMillis`, `version`, `createdAt`, `updatedAt`. Domain methods `addStock(command, now)` and `removeStock(command, now)` accept a normalized `StockCommand` and return a `StockChange` containing the new item state, movement and event. They reject amounts ≤ 0, resulting balance > `1,000,000,000,000` milliunits, and removals larger than the current balance.
 
-The value object `Quantity` converts a JSON numeric value into integer milliunits before invoking domain behavior. It accepts values that are multiples of `0.001` and range `0.001`–`1,000,000,000.000` for a change. JSON numeric spelling and trailing zeros do not matter; the conversion checks the scaled value against an integer within a small tolerance for binary number representation, then stores only the verified integer. The same maximum applies to a balance. API responses convert milliunits back to unit quantities with at most three decimal places. This keeps stock arithmetic exact without relying on binary floating-point addition.
+`DomainStockMovement` contains `id`, `productId`, `type` (`ADD`/`REMOVE`), `quantityMillis`, `reason` and `createdAt`. Its persistence record additionally stores `resultingQuantityMillis`, `idempotencyKey`, the normalized `command`, and the original public `result` for safe retries. `DomainStockEvent` contains `eventId`, `eventType` (`StockAdded`/`StockRemoved`), `movementId`, `productId`, milliunit quantities, reason and occurrence time. These events are created only for successful changes.
+
+The pure domain function `toMillis` converts a JSON numeric value into integer milliunits before invoking domain behavior. There is no separate `Quantity` class. It accepts values that are multiples of `0.001` and range `0.001`–`1,000,000,000.000` for a change. JSON numeric spelling and trailing zeros do not matter; the conversion checks the scaled value against an integer within a small tolerance for binary number representation, then stores only the verified integer. The same maximum applies to a balance. API responses convert milliunits back to unit quantities with at most three decimal places. This keeps stock arithmetic exact without relying on binary floating-point addition.
 
 Reasons are required, trimmed, and 1–200 characters. Duplicate `Idempotency-Key` with the same product, action, quantity and reason returns the originally committed movement and balance; a different command using the key fails with `IDEMPOTENCY_CONFLICT`. The key is checked at the application/persistence boundary, not in the InventoryItem entity.
 
@@ -22,7 +24,7 @@ Reasons are required, trimmed, and 1–200 characters. Duplicate `Idempotency-Ke
 
 | Invariant or condition | Owner | Error/result |
 | --- | --- | --- |
-| Quantity is positive with at most three decimal places | `Quantity` value object; API also checks shape | `INVALID_QUANTITY` |
+| Quantity is positive with at most three decimal places | `toMillis` conversion and `InventoryItem` safe-integer validation; API checks shape | `INVALID_QUANTITY` |
 | Stock never becomes negative | `InventoryItem.removeStock` | `INSUFFICIENT_STOCK` |
 | Balance never exceeds maximum | `InventoryItem.addStock` | `STOCK_LIMIT_EXCEEDED` |
 | A valid change has one movement and one event intent | Stock use case transaction | Commit all three records or none |
@@ -35,13 +37,13 @@ The HTTP layer translates these domain/application errors to the [API error enve
 
 | Use case | Reads/writes | Ports |
 | --- | --- | --- |
-| `AddStock` | Validate product when no inventory exists; load/retry current balance; commit inventory, movement and pending event | `ProductCatalog`, `StockUnitOfWork` |
-| `RemoveStock` | Load/retry balance; reject overdraw; commit inventory, movement and pending event | `StockUnitOfWork` |
-| `GetInventory` / `ListInventory` | Read stored balances; absence means logical zero to BFF | `InventoryRepository` |
-| `GetStockMovements` | Read a product's movements newest first | `StockMovementRepository` |
-| `PublishPendingEvents` | Publish outbox messages and mark acknowledged rows | `OutboxRepository`, `EventPublisher` |
+| `StockUseCases.change` with `ADD` | Validate product when no inventory exists; load/retry balance; commit inventory, movement and pending event | `ProductCatalog`, `StockStore` |
+| `StockUseCases.change` with `REMOVE` | Load/retry balance; reject overdraw; commit inventory, movement and pending event | `StockStore` |
+| `StockUseCases.get` / `.list` | Read stored balances; absence means logical zero to BFF | `InventoryRepository` through `StockStore` |
+| `StockUseCases.movements` | Read a product's movements newest first | `StockMovementRepository` through `StockStore` |
+| `PublishPendingEvents.execute` | Publish outbox messages and mark acknowledged rows | `OutboxRepository`, `EventPublisher` |
 
-`StockUnitOfWork` is an application port representing the atomic write of balance, movement and outbox intent. Its MongoDB adapter owns sessions, transactions and version-checked updates. `InventoryRepository` and `StockMovementRepository` are read ports. `ProductCatalog` is an HTTP adapter to Product Service. `EventPublisher` is implemented with the official NATS JavaScript client and JetStream publish acknowledgments. The audit worker has its own `AuditRepository` port and MongoDB adapter. Keep ports specific to each service; do not build a generic repository framework.
+`StockUnitOfWork` is an application port representing the atomic write of balance, movement and outbox intent. `StockStore` combines it with the `InventoryRepository` and `StockMovementRepository` read ports. `MongoStockStore` implements those ports and owns sessions, transactions and version-checked updates. `ProductCatalog` is a port implemented by `HttpProductCatalog` for Product Service. `EventPublisher` is implemented by `NatsEventPublisher` with JetStream publish acknowledgments. The audit worker has its own `AuditRepository` port and MongoDB adapter. Ports remain specific to each service.
 
 ## Dependency direction
 

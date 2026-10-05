@@ -10,13 +10,13 @@ After `setup:nats` has created `STOCK_EVENTS` and the durable pull consumer `sto
 
 ## Event handling
 
-`HandleStockEvent` validates UTF-8 JSON, `schemaVersion: 1`, subject/type agreement, UUID IDs, valid positive three-decimal quantity, reason, resulting quantity and UTC occurrence time. Map it to an AuditRepository port. The MongoDB adapter upserts by event ID and stores the full envelope plus `receivedAt`. An identical duplicate is success and may be acknowledged; a reused ID with different payload is a contract violation and must remain unacknowledged for investigation.
+`parseEvent` in `audit.ts` validates UTF-8 JSON, `schemaVersion: 1`, subject/type agreement, UUID IDs, valid positive three-decimal quantity, reason, resulting quantity and UTC occurrence time. `HandleStockEvent.execute` receives the validated envelope and delegates to the `AuditRepository` port. `MongoAuditRepository.save` inserts with `_id = eventId` and stores the full envelope plus `receivedAt`. On duplicate-key failure it compares the previous payload. An identical duplicate is success and may be acknowledged; a reused ID with different payload is a contract violation and remains unacknowledged for investigation.
 
-Acknowledge only after the audit write commits. If MongoDB is unavailable, the event is malformed, or the schema version is unsupported, log the stream sequence and event ID when available, leave it unacknowledged, and surface a clear worker failure signal. Do not silently discard poison messages. The worker never calls Product Service and never mutates Inventory. Audited data is not exposed through a new user-facing reporting API in v1; the demo inspects the collection and worker logs.
+Acknowledge only after the audit write succeeds. If MongoDB is unavailable, the event is malformed, or the schema version is unsupported, the consumer logs `Event left unacknowledged` with the error and leaves it pending for redelivery. Current failure logs do not include stream sequence metadata. The worker never calls Product Service and never mutates Inventory. Audited data is not exposed through a user-facing reporting API in v1; the demo inspects the collection and worker logs.
 
 ## Configuration and observation
 
-Validate `MONGO_URI` for `stockflow_audit` and `NATS_URL` at startup. Log consumer attachment, event ID, subject, insert-versus-duplicate outcome, acknowledgment and processing failure. Keep credentials out of logs. Provide a lightweight process status log or local diagnostic command in the runbook, rather than a public business controller. NATS consumer pending count and the audit collection are the authoritative delivery evidence.
+Startup validates `MONGO_URI` for `stockflow_audit` and `NATS_URL`. Logs show durable-consumer attachment with initial pending and acknowledgment-pending counts, audited event IDs, duplicate IDs, processing failures and reconnect attempts. `scripts/inspect-nats.ts` reports current consumer counts; the audit collection proves persistence. There is no public business controller or continuous metrics exporter.
 
 ## Verification
 

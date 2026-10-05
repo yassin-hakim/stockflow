@@ -1,6 +1,6 @@
 # HTTP API contract
 
-This is the proposed v1 contract. Angular calls only the BFF `/api` routes. The BFF uses the corresponding internal Product and Inventory routes over HTTP. JSON uses camelCase fields and UTC ISO 8601 timestamps. IDs and `Idempotency-Key` values are UUIDs. Unknown request fields are rejected. No authentication is included in this local demo.
+This is the implemented v1 contract, shared through `packages/contracts` and exercised by `verify:api`. Angular calls only the BFF `/api` routes. The BFF uses the corresponding internal Product and Inventory routes over HTTP. JSON uses camelCase fields and UTC ISO 8601 timestamps. IDs and `Idempotency-Key` values are UUIDs. Unknown request fields are rejected. No authentication is included in this local demo.
 
 ## Shared types
 
@@ -126,4 +126,4 @@ Product Service owns `POST /products`, `GET /products`, and `GET /products/:id`;
 | 503 | `SERVICE_UNAVAILABLE` | Required local MongoDB dependency unavailable before commit |
 | 500 | `INTERNAL_ERROR` | Unexpected server failure |
 
-`requestId` is assigned by the BFF as a UUID, passed to internal services in `X-Request-ID`, and propagated to service logs; the response contains no MongoDB, NATS or stack-trace details. The HTTP success response means the MongoDB transaction committed, **not** that the asynchronous audit worker has already processed the event. On an uncertain client timeout, retry with the same `Idempotency-Key`. No automatic retry of stock POST occurs in BFF or Angular.
+`requestId` is assigned by the BFF as a UUID and passed to internal services in `X-Request-ID`. HTTP error envelopes and response headers carry it; automatic per-request service logging is not implemented. Relay and worker logs use event IDs. The public response contains no MongoDB, NATS or stack-trace details. Stock HTTP success means the MongoDB transaction committed; asynchronous audit processing may finish later. On an uncertain client timeout, retry with the same `Idempotency-Key`. No automatic retry of stock POST occurs in BFF or Angular.

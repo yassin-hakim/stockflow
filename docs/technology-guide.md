@@ -12,7 +12,7 @@ Product Service owns product data and Inventory Service owns stock data. They ru
 
 ## NestJS
 
-NestJS hosts the BFF, Product Service and Inventory Service HTTP applications and the audit worker's application context. Controllers and DTOs handle transport details; module providers connect use cases to repository, HTTP-client and NATS adapters. NestJS decorators and exceptions remain outside the domain. The stock rules are plain TypeScript and can be tested without a Nest application. See [backend](backend.md), [NestJS modules](https://docs.nestjs.com/modules), and [providers](https://docs.nestjs.com/providers).
+NestJS hosts the BFF, Product Service and Inventory Service HTTP applications and the audit worker's application context. Controllers validate transport data and map shared contract types; module providers connect use cases to repository, HTTP-client and NATS adapters. NestJS decorators and exceptions remain outside the domain. The stock rules are plain TypeScript and can be tested without a Nest application. See [backend](backend.md), [NestJS modules](https://docs.nestjs.com/modules), and [providers](https://docs.nestjs.com/providers).
 
 ## Angular
 

@@ -20,6 +20,7 @@ The separate [implementation guide](../implementation/README.md) breaks this des
 
 | Document | Coverage |
 | --- | --- |
+| [App and code walkthrough](walkthrough.md) | Employee screens and a complete product/stock/event trace through the actual source |
 | [Requirements](requirements.md) | Product scope, non-goals, acceptance and source-spec traceability |
 | [Architecture](architecture.md) | Microservices, BFF, boundaries, deployment and end-to-end paths |
 | [Technology guide](technology-guide.md) | Project-specific roles of all eight required technologies and patterns |
@@ -47,4 +48,4 @@ The separate [implementation guide](../implementation/README.md) breaks this des
 
 ## Reading order
 
-Read requirements, architecture, technology guide, domain design, API, and events first. The frontend and backend guides then specify implementation structure. Persistence, operations, and testing complete the build and verification path. Official technology references are linked from the relevant guide; project contracts in these docs take precedence over generic examples.
+For a first run, start with the [root quick start](../README.md#quick-start), then follow the [walkthrough](walkthrough.md). For implementation details, read requirements, architecture, technology guide, domain design, API, and events. The frontend and backend guides explain source structure; persistence, operations, and testing complete the verification path. Official technology references are linked from the relevant guide.

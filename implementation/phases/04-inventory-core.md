@@ -6,7 +6,7 @@ Deliver Inventory's business behavior, internal HTTP API, MongoDB persistence an
 
 ## Includes
 
-Implement `Quantity` in integer thousandths, `InventoryItem.addStock` and `.removeStock`, StockMovement, `StockAdded` and `StockRemoved`, and errors for invalid quantity, overdraw and maximum balance. Build `AddStock`, `RemoveStock`, `ListInventory`, `GetInventory`, and `GetStockMovements` use cases. Ports include Inventory and movement reads, `ProductCatalog`, and `StockUnitOfWork`. The first add verifies Product through its API and creates Inventory from logical zero. First remove from an absent record returns `INSUFFICIENT_STOCK`; rejected commands produce no movement or event intent.
+The implemented quantity conversion is the pure `toMillis` function. `InventoryItem.addStock` and `.removeStock` produce `DomainStockMovement` and `DomainStockEvent` data, with errors for invalid quantity, overdraw and maximum balance. `StockUseCases.change`, `.list`, `.get` and `.movements` implement the application operations. Ports include Inventory and movement reads, `ProductCatalog`, and `StockUnitOfWork`. The first add verifies Product through its API and creates Inventory from logical zero. First remove from an absent record returns `INSUFFICIENT_STOCK`; rejected commands produce no movement or event intent.
 
 Use Inventory-owned `inventory`, `stock_movements` and `outbox` collections and all indexes in [docs/persistence.md](../../docs/persistence.md). A single MongoDB transaction inserts or version-updates the balance, inserts exactly one movement and inserts exactly one pending outbox row with stable event ID/envelope. The movement's unique idempotency key guards replay; exact replays return the original result, changed payloads fail, and concurrent first-insert or version conflicts reload and rerun the domain rule up to three attempts. Never publish to NATS inside the transaction.
 
@@ -14,7 +14,7 @@ Expose internal Inventory list/detail, add/remove and movement-history routes, p
 
 ## Implementation progress
 
-- [x] Implement framework-independent Quantity, InventoryItem, Movement and domain event types with their invariants.
+- [x] Implement framework-independent `toMillis`, `InventoryItem`, movement and domain event types with their invariants.
 - [x] Implement Inventory use cases and service-specific ports; add `HttpProductCatalog` with not-found versus unavailable mapping.
 - [x] Create indexes and MongoDB adapters for reads and the transactional `StockUnitOfWork`.
 - [x] Add idempotency-key lookup/fingerprint comparison and original-result replay.

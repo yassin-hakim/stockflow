@@ -1,59 +1,38 @@
-# Frontend
+# StockFlow Angular frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.24.
+This workspace is the employee interface for StockFlow: an inventory dashboard, product creation, stock add/remove forms and movement history. It uses Angular 21.2, standalone components, Router, signals, reactive forms and `HttpClient`.
 
-## Development server
+## Start locally
 
-To start a local development server, run:
+Complete the repository [setup instructions](../../docs/operations.md) to install root workspace dependencies and start MongoDB, NATS, Product Service, Inventory Service, BFF and audit worker. From the repository root, run:
 
-```bash
-ng serve
+```sh
+npm run dev:frontend
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+Open `http://localhost:4200`. The checked-in [proxy configuration](proxy.conf.json) sends `/api` requests to the BFF at `http://localhost:3000`. There are no frontend MongoDB/NATS credentials or direct Product/Inventory URLs. The root install provides the local Angular CLI.
 
-## Code scaffolding
+## Source map
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+| Path | Responsibility |
+| --- | --- |
+| [app.routes.ts](src/app/app.routes.ts) | Inventory, creation, detail, root redirect and wildcard routes |
+| [dashboard.ts](src/app/inventory/dashboard.ts) | Joined stock view, statuses and remote view states |
+| [product-create.ts](src/app/products/product-create.ts) | Product form and navigation after creation |
+| [product-detail.ts](src/app/products/product-detail.ts) | Stock forms, safe idempotency-key retry and history |
+| [bff-api.ts](src/app/core/bff-api.ts) | Single typed BFF client and readable API error mapping |
 
-```bash
-ng generate component component-name
+The server supplies `OUT`/`LOW`/`OK` status and enforces stock rules. Forms support three-decimal quantities, require reasons and preserve the original stock request identity while its outcome is uncertain. Views include keyboard focus handling, validation relationships, announced results and responsive table/card layouts.
+
+## Build and test
+
+Run from the repository root:
+
+```sh
+npm run build -w @stockflow/frontend
+npm run test -w @stockflow/frontend -- --watch=false
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+The production build is written under `apps/frontend/dist/frontend`. Component tests use Angular's Vitest-based unit-test builder. Browser acceptance evidence and manual demo instructions are in [testing](../../docs/testing.md) and the [verification report](../../implementation/verification.md); this workspace has no configured `ng e2e` target.
 
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Read the [frontend design](../../docs/frontend.md), [API contract](../../docs/api.md), and [app/code walkthrough](../../docs/walkthrough.md) for behavior and the complete request path.

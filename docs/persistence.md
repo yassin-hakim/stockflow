@@ -12,7 +12,7 @@ Use the official MongoDB Node.js driver 7.7.0 inside repository adapters. The dr
 | --- | --- | --- | --- |
 | Product | `products` | `_id` UUID, `name`, `unit`, `category`, `lowStockThresholdMillis`, timestamps | Primary `_id` |
 | Inventory | `inventory` | `_id` UUID, `productId`, `quantityMillis`, `version`, timestamps | Unique `{ productId: 1 }` |
-| Inventory | `stock_movements` | `_id` UUID, `productId`, `type`, `quantityMillis`, `reason`, `resultingQuantityMillis`, `idempotencyKey`, `createdAt` | Unique `{ idempotencyKey: 1 }`; `{ productId: 1, createdAt: -1, _id: -1 }` |
+| Inventory | `stock_movements` | `_id` UUID, `productId`, `type`, `quantityMillis`, `reason`, `resultingQuantityMillis`, `idempotencyKey`, normalized `command`, original public `result`, `createdAt` | Unique `{ idempotencyKey: 1 }`; `{ productId: 1, createdAt: -1, _id: -1 }` |
 | Inventory | `outbox` | `_id` event UUID, `subject`, `payload`, `status`, `attempts`, `nextAttemptAt`, `createdAt`, `publishedAt` | `{ status: 1, nextAttemptAt: 1 }` |
 | Audit | `stock_events` | `_id` event UUID, event envelope, `receivedAt` | Primary `_id` provides event-ID deduplication |
 
@@ -34,7 +34,7 @@ The conditional version check is a persistence guard against two simultaneous re
 
 ## Read behavior
 
-`GET /inventory` returns only physically stored balances. The BFF joins those with all Products and displays missing records as zero. `GET /inventory/:productId` returns `INVENTORY_NOT_FOUND` if no row exists; the BFF converts that one condition to a zero projection after confirming Product exists. Movement history uses the compound index and sorts by `(createdAt desc, _id desc)`. The audit worker performs an upsert keyed by event ID, commits it, then acknowledges JetStream delivery.
+`GET /inventory` returns only physically stored balances. The BFF joins those with all Products and displays missing records as zero. `GET /inventory/:productId` returns `INVENTORY_NOT_FOUND` if no row exists; the BFF converts that one condition to a zero projection after confirming Product exists. Movement history uses the compound index and sorts by `(createdAt desc, _id desc)`. The audit worker inserts with `_id = eventId`; on duplicate-key error it verifies the previously stored event is identical. JetStream delivery is acknowledged only after that persistence operation succeeds.
 
 ## Failure and recovery
 

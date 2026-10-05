@@ -41,3 +41,9 @@ Compose health checks reported MongoDB and NATS healthy. `setup:mongo` confirmed
 ## Phase status
 
 All eight implementation phases have completed their code and local acceptance gates. Evidence includes clean dependency installation, build and test suites, service/API checks, transaction and concurrency scenarios, NATS/audit recovery, the Angular walkthrough, and Compose volume persistence. Automated accessibility and keyboard checks passed; a human screen-reader sign-off remains outside this local verification record.
+
+## Documentation publication audit — 2026-10-05
+
+The expanded root README, documentation index, app/code walkthrough, frontend README and setup runbook were reviewed against the implemented source in commit `9fd1313`. The review corrected use-case names, Inventory method signatures, MongoDB audit insert/deduplication behavior, BFF retry policy, frontend retry identity and request-ID logging claims. The walkthrough traces creation, add, remove and rejection through all eight required technologies and patterns.
+
+An index-based check verified 40 Markdown documents, 381 local links and 8 heading anchors against the exact staged publication, including source references; unstaged application edits were excluded. `git diff --cached --check` passed. Runtime checks above remain the recorded evidence for the implemented baseline. MongoDB/NATS containers were stopped at this documentation audit, so setup commands were inspected against the source and earlier executed setup evidence rather than rerun successfully in this audit. Separate-machine setup and hosted deployment were not performed.

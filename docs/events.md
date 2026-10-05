@@ -2,7 +2,7 @@
 
 ## Role of NATS
 
-Stock changes are synchronous HTTP commands, but their audit notification is asynchronous. Inventory domain code creates `StockAdded` or `StockRemoved` after a valid change; the Inventory Service persists the event intent in its MongoDB outbox. An infrastructure relay publishes it to **NATS JetStream**. A separate audit worker consumes and stores it. The domain and use cases depend on an `EventPublisher` port, not on NATS types.
+Stock changes are synchronous HTTP commands, but their audit notification is asynchronous. Inventory domain code creates `StockAdded` or `StockRemoved` after a valid change; the Inventory Service persists the event intent in its MongoDB outbox. An infrastructure relay publishes it to **NATS JetStream**. A separate audit worker consumes and stores it. Domain code produces plain event data; the application use case `PublishPendingEvents` depends on an `EventPublisher` port without importing NATS types.
 
 Core NATS delivers only to connected subscribers and is at-most-once. JetStream stores events for a durable consumer and supports acknowledgments and redelivery. The MongoDB outbox closes the gap between committing stock and attempting to publish. JetStream still permits duplicates after retries, so the consumer is idempotent. See [Core NATS](https://docs.nats.io/learn/core-nats/) and [JetStream](https://docs.nats.io/learn/jetstream/).
 
@@ -47,7 +47,7 @@ If the process crashes after `PubAck` but before marking the row published, it m
 
 ## Audit consumer
 
-The worker validates JSON, version, subject/type agreement, UUIDs, positive three-decimal quantity and UTC time. It upserts the event into `stockflow_audit.stock_events` keyed by `eventId`. It acknowledges only after the write commits, including when a duplicate with identical payload is already present. The same ID with different payload is a contract violation: log it and leave the message unacknowledged for investigation. If persistence fails it also leaves the message unacknowledged; JetStream redelivers according to consumer backoff. Unsupported versions or malformed messages are logged with stream sequence and event ID when available and remain unacknowledged for operator resolution. Do not acknowledge and discard data silently.
+The worker's `parseEvent` validates JSON, version, subject/type agreement, UUIDs, positive three-decimal quantity, reason, resulting quantity and UTC time. `HandleStockEvent` delegates persistence to `AuditRepository`. `MongoAuditRepository` inserts into `stockflow_audit.stock_events` with `_id = eventId`. On duplicate-key failure, it reads the existing event and compares the full payload. It acknowledges only after a successful write or an identical previously stored payload. The same ID with different payload is a contract violation: log it and leave the message unacknowledged for investigation. If persistence fails it also leaves the message unacknowledged; JetStream redelivers according to consumer backoff. Unsupported versions or malformed messages produce an `Event left unacknowledged` error log and remain pending for operator resolution. Current failure logs do not include stream sequence metadata; successful and duplicate-processing logs include event IDs.
 
 ## Observable states and failure tests
 
