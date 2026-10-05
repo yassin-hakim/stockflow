@@ -2,6 +2,8 @@
 
 StockFlow is a small restaurant inventory application built with Angular, a NestJS Backend for Frontend (BFF), Product and Inventory microservices, MongoDB, NATS JetStream, domain-driven design (DDD), and hexagonal architecture.
 
+**Reviewing this repository?** Follow the [company reviewer setup guide](docs/review-guide.md) for prerequisites, installation, startup and the acceptance demo.
+
 **Current state:** all five application projects are implemented. A fresh `npm ci`, build, backend and Angular tests, HTTP contracts, MongoDB transaction/concurrency checks, JetStream/audit checks, and the browser demo passed. The pinned Docker Compose stack was started through WSL; its MongoDB and NATS volumes preserved a record and pending event across `down`/`up`, and the audit worker consumed that event after restart. See [verification evidence](implementation/verification.md).
 
 ## What the app does
@@ -62,7 +64,7 @@ The [technology guide](docs/technology-guide.md) maps all eight required technol
 
 ## Quick start
 
-Use Node.js 22 (22.16.0 was tested), npm 10, Git, and Docker with Compose. Docker runs MongoDB and NATS; the five applications run on the host. Ports 3000, 3001, 3002, 4200, 27017, 4222 and 8222 must be available.
+Use Node.js 22.16 or later within version 22, npm 10.9.2 or later within version 10, Git, and Docker with Compose v2. `.nvmrc` selects tested Node 22.16.0 and the root manifest declares the supported versions. Docker runs MongoDB and NATS; the five applications run on the host. Ports 3000, 3001, 3002, 4200, 27017, 4222 and 8222 must be available.
 
 ```sh
 git clone https://github.com/yassin-hakim/stockflow.git
@@ -70,16 +72,13 @@ cd stockflow
 npm ci
 ```
 
-Create the four local environment files. In PowerShell:
+Create the four local environment files on Windows, macOS or Linux:
 
-```powershell
-Copy-Item apps/product-service/.env.example apps/product-service/.env
-Copy-Item apps/inventory-service/.env.example apps/inventory-service/.env
-Copy-Item apps/bff/.env.example apps/bff/.env
-Copy-Item apps/audit-worker/.env.example apps/audit-worker/.env
+```sh
+npm run configure
 ```
 
-On macOS/Linux use `cp` with the same source and destination paths. These examples contain the localhost configuration and the three service-owned database names. Actual `.env` files are ignored by Git.
+The command copies `.env.example` files only when `.env` is absent and preserves existing configuration. Defaults contain localhost URLs and the three service-owned database names. Actual `.env` files are ignored by Git. No external account, API key or private package registry is required.
 
 Start infrastructure in a shell where Docker is available, then initialize its resources from the repository root:
 
@@ -89,7 +88,7 @@ npm run setup:mongo
 npm run setup:nats
 ```
 
-MongoDB must become the primary of replica set `rs0` before stock transactions can run. If Docker is available only inside WSL, run the Compose command there and run npm commands from PowerShell; see the [Windows/WSL setup](docs/operations.md#windows-with-docker-in-wsl).
+`setup:mongo` waits until replica set `rs0` has a writable primary before reporting success. If Docker is available only inside WSL, run the Compose command there and run npm commands from PowerShell; see the [Windows/WSL setup](docs/operations.md#windows-with-docker-in-wsl).
 
 Open five terminals in the repository root and run one command in each:
 
