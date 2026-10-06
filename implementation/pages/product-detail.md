@@ -18,6 +18,10 @@ After a confirmed stock command, announce the committed quantity from `StockChan
 
 ## Acceptance
 
+## Expanded location view
+
+The current page reads `/api/stock/:productId` for the restaurant total and its named `locations` breakdown, plus `/api/stock/:productId?locationId=…` for selected-location stock. The BFF composes Product and Inventory reads using the existing stock display projection. Each location remains explicit, including zero stock. The breakdown is paginated. The action selector must display the same location sent with stock commands, including after asynchronous options load and after refresh.
+
 - [x] Direct navigation to a known new Product shows zero, OUT and empty history.
 - [x] An unknown UUID gets a not-found state; malformed UUID gets a request error state; service failure gets retry, never false zero.
 - [x] Add/remove results refresh overview and movements without optimistic balance changes.

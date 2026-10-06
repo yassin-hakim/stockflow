@@ -10,6 +10,8 @@ import {
 
 export const STOCK_STREAM = "STOCK_EVENTS";
 export const AUDIT_CONSUMER = "stock-audit";
+export const SALES_STREAM='SALES_EVENTS';
+export const SALES_AUDIT_CONSUMER='sales-audit';
 export const STOCK_STREAM_CONFIG: Partial<StreamConfig> & { name: string } = {
   name: STOCK_STREAM,
   subjects: ["inventory.stock.*"],
@@ -30,6 +32,16 @@ export const AUDIT_CONSUMER_CONFIG: Partial<ConsumerConfig> = {
   max_deliver: -1,
   backoff: [1, 5, 30, 300].map((seconds) => seconds * 1_000_000_000),
 };
+export const SALES_STREAM_CONFIG={...STOCK_STREAM_CONFIG,name:SALES_STREAM,subjects:['sales.sale.*']};
+export const SALES_AUDIT_CONSUMER_CONFIG={...AUDIT_CONSUMER_CONFIG,durable_name:SALES_AUDIT_CONSUMER};
+export function assertSalesStream(config:Partial<StreamConfig>):void {
+  if(config.name!==SALES_STREAM || config.subjects?.length!==1 || config.subjects[0]!=='sales.sale.*')throw new Error('Existing SALES_EVENTS stream has incompatible settings.');
+  assertStockStream({...config,name:STOCK_STREAM,subjects:['inventory.stock.*']});
+}
+export function assertSalesConsumer(config:Partial<ConsumerConfig>):void {
+  if(config.durable_name!==SALES_AUDIT_CONSUMER)throw new Error('Existing sales-audit consumer has incompatible settings.');
+  assertAuditConsumer({...config,durable_name:AUDIT_CONSUMER});
+}
 
 export function assertStockStream(config: Partial<StreamConfig>): void {
   const fields = [

@@ -2,6 +2,8 @@ import { Module } from "@nestjs/common";
 import { MongoClient } from "mongodb";
 import { AuditConsumer, MongoAuditRepository } from "./audit";
 import { HandleStockEvent } from "./application/handle-stock-event";
+import { MongoSalesAuditRepository, SalesAuditConsumer } from './sales-audit';
+import { HandleSalesEvent } from './application/handle-sales-event';
 
 export class MongoShutdown {
   constructor(private readonly client: MongoClient) {}
@@ -38,6 +40,9 @@ export class MongoShutdown {
       inject: [MongoAuditRepository],
     },
     AuditConsumer,
+    {provide:MongoSalesAuditRepository,useFactory:(client:MongoClient)=>new MongoSalesAuditRepository(client),inject:[MongoClient]},
+    {provide:'HANDLE_SALES_EVENT',useFactory:(repository:MongoSalesAuditRepository)=>new HandleSalesEvent(repository),inject:[MongoSalesAuditRepository]},
+    SalesAuditConsumer,
   ],
 })
 export class AuditModule {}

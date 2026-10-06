@@ -1,0 +1,188 @@
+<app-section-nav area="operations" />
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Stock records</span>
+    <h1>{{ id ? 'Stock operation' : 'Operations' }}</h1>
+    <p class="muted">Inspect recorded deliveries, transfers, waste and count adjustments.</p>
+  </div>
+  <a class="button" routerLink="/receipts/new">Receive delivery</a>
+</div>
+@if (error()) {
+  <p class="error" role="alert">{{ error() | readable: names() }}</p>
+  <button type="button" (click)="load()">Retry</button>
+}
+@if (loading()) {
+  <p role="status">Loading operations…</p>
+} @else if (!error()) {
+  @if (selected(); as operation) {
+    <section class="panel">
+      <h2>{{ label(operation) }}</h2>
+      <p>
+        {{ kindName(operation.kind) }} · <strong>{{ operation.status }}</strong> ·
+        {{ operation.createdAt | date: 'medium' }}
+      </p>
+      <p>
+        {{ location(operation.locationId) }}
+        @if (operation.destinationLocationId) {
+          → {{ location(operation.destinationLocationId) }}
+        }
+      </p>
+      <p>{{ reason(operation) }}</p>
+      @if (operation.error) {
+        <p class="error">{{ operation.error.message | readable: names() }}</p>
+      }
+    </section>
+    @if(operation.kind==='RECEIPT'){
+      <section class="panel"><h2>Received costs</h2><p>Delivery cost: <strong>{{operation.costMinor==null?'Unrecorded':(operation.costMinor/100|currency:operation.currency)}}</strong></p><ul class="record-list">@for(line of operation.receivedLines??[];track line.productId){<li><strong>{{product(line.productId)}}</strong><p>{{line.quantity}} {{unit(line.productId)}} · {{line.unitCostMinor===null?'Unrecorded cost':(line.unitCostMinor/100|currency:operation.currency)}} per {{unit(line.productId)}}</p></li>}</ul></section>
+    }
+    @if (linkedSale(); as sale) {
+      <p><a [routerLink]="['/sales', sale.id]">View sale and recorded items</a></p>
+    }
+    <h2>Committed movements</h2>
+    @if (!operation.movements.length) {
+      <p>No stock movements were committed.</p>
+    } @else {
+      <div class="table-wrap desktop-table">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Product</th>
+              <th scope="col">Location</th>
+              <th scope="col" class="numeric">Change</th>
+              <th scope="col" class="numeric">Resulting stock</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (movement of operation.movements; track movement.id) {
+              <tr>
+                <td>
+                  <a
+                    [routerLink]="['/products', movement.productId]"
+                    [queryParams]="{ location: movement.locationId }"
+                    >{{ product(movement.productId) }}</a
+                  >
+                </td>
+                <td>{{ location(movement.locationId) }}</td>
+                <td class="numeric">
+                  {{ movement.type === 'ADD' ? '+' : '−' }}{{ movement.quantity }}
+                  {{ unit(movement.productId) }}
+                </td>
+                <td class="numeric">
+                  {{ movement.resultingQuantity }} {{ unit(movement.productId) }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="stack mobile-list">
+        @for (movement of operation.movements; track movement.id) {
+          <article class="panel">
+            <h3>{{ product(movement.productId) }}</h3>
+            <p>
+              {{ location(movement.locationId) }} · {{ movement.type === 'ADD' ? '+' : '−'
+              }}{{ movement.quantity }} {{ unit(movement.productId) }}
+            </p>
+            <p>Resulting stock: {{ movement.resultingQuantity }} {{ unit(movement.productId) }}</p>
+          </article>
+        }
+      </div>
+    }
+    <p><a routerLink="/operations">All operations</a></p>
+  } @else {
+    <div class="inventory-filters">
+      <div class="field">
+        <label for="operation-kind">Operation type</label
+        ><select
+          id="operation-kind"
+          [value]="kind()"
+          (change)="kind.set($any($event.target).value)"
+        >
+          <option value="" [selected]="!kind()">All types</option>
+          <option value="RECEIPT" [selected]="kind()==='RECEIPT'">Receiving</option>
+          <option value="TRANSFER" [selected]="kind()==='TRANSFER'">Transfers</option>
+          <option value="WASTE" [selected]="kind()==='WASTE'">Waste</option>
+          <option value="COUNT" [selected]="kind()==='COUNT'">Count adjustments</option>
+          <option value="MANUAL" [selected]="kind()==='MANUAL'">Manual adjustments</option>
+          <option value="SALE" [selected]="kind()==='SALE'">Sale consumption</option>
+          <option value="SALE_RETURN" [selected]="kind()==='SALE_RETURN'">Sale stock returns</option>
+        </select>
+      </div>
+      <div class="field"><label for="operation-location">Location</label><select id="operation-location" [value]="filterLocation()" (change)="filterLocation.set($any($event.target).value)"><option value="" [selected]="!filterLocation()">All locations</option>@for(location of locations();track location.id){<option [value]="location.id" [selected]="location.id===filterLocation()">{{location.name}}</option>}</select></div>
+      <div class="field"><label for="operation-from">From</label><input id="operation-from" type="datetime-local" [value]="from()" (input)="from.set($any($event.target).value)" /></div>
+      <div class="field"><label for="operation-to">Before</label><input id="operation-to" type="datetime-local" [value]="to()" (input)="to.set($any($event.target).value)" /></div>
+      <button type="button" [disabled]="loading() || pager.busy()" (click)="load()">Apply filters</button>
+    </div>
+    @if(filterError()){<p class="error" role="alert">{{filterError()}}</p>}
+    @if (!items().length) {
+      <p role="status">No recorded operations match this view.</p>
+    } @else {
+      <div class="table-wrap desktop-table">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Reference</th>
+              <th scope="col">Type</th>
+              <th scope="col">Location</th>
+              <th scope="col">Status</th>
+              <th scope="col">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (operation of pager.slice(items()); track operation.id) {
+              <tr>
+                <td>
+                  <a [routerLink]="['/operations', operation.id]">{{ label(operation) }}</a>
+                </td>
+                <td>{{ kindName(operation.kind) }}</td>
+                <td>
+                  {{ location(operation.locationId) }}
+                  @if (operation.destinationLocationId) {
+                    → {{ location(operation.destinationLocationId) }}
+                  }
+                </td>
+                <td>{{ operation.status }}</td>
+                <td>{{ operation.createdAt | date: 'medium' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="stack mobile-list">
+        @for (operation of pager.slice(items()); track operation.id) {
+          <article class="panel">
+            <h2>
+              <a [routerLink]="['/operations', operation.id]">{{ label(operation) }}</a>
+            </h2>
+            <p>{{ kindName(operation.kind) }} · {{ operation.status }}</p>
+            <p>
+              {{ location(operation.locationId) }}
+              @if (operation.destinationLocationId) {
+                → {{ location(operation.destinationLocationId) }}
+              }
+            </p>
+            <time [attr.datetime]="operation.createdAt">{{
+              operation.createdAt | date: 'medium'
+            }}</time>
+          </article>
+        }
+      </div>
+    }
+    <app-pagination [total]="items().length" [page]="pager.current(items().length)" [size]="pager.size()" [hasMore]="!!cursor()" [busy]="loading() || pager.busy()" (pageChange)="pageTo($event)" (sizeChange)="resizePage($event)" />
+    <h2>Physical counts</h2><app-pagination label="Physical count pages" [total]="counts().length" [page]="countPager.current(counts().length)" [size]="countPager.size()" [hasMore]="!!countsCursor()" [busy]="countsLoading() || countPager.busy()" (pageChange)="countsPageTo($event)" (sizeChange)="countsResize($event)" />@if(countsError()){<p class="error" role="alert">{{countsError() | readable:names()}}</p>}<p><a routerLink="/counts">Browse all physical counts</a></p>
+    @if (!counts().length) {
+      <p>No physical counts yet. <a routerLink="/counts/new">Start a count</a>.</p>
+    } @else {
+      <ul class="record-list">
+        @for (count of countPager.slice(counts()); track count.id) {
+          <li>
+            <a [routerLink]="['/counts', count.id]"
+              >{{ location(count.locationId) }} · {{ count.createdAt | date: 'medium' }}</a
+            ><span>{{ count.status }}</span>
+            <p>{{ count.reason | readable: names() }}</p>
+          </li>
+        }
+      </ul>
+    }
+  }
+}

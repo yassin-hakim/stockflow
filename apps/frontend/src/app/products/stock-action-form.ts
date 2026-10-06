@@ -17,6 +17,7 @@ export class StockActionFormComponent {
   readonly unit = input.required<string>();
   readonly form = input.required<StockActionForm>();
   readonly submitting = input(false);
+  readonly disabled = input(false);
   readonly validation = input('');
   readonly submitted = output<void>();
 }

@@ -1,67 +1,44 @@
 # Company reviewer setup
 
-This guide runs the repository locally for technical review. The source, npm lockfile, environment examples, Docker service definitions and verification scripts are included. No external account, API key or private npm registry is required.
+Use the delivered complete-app revision. The historical [fresh-clone report](review-verification.md) verifies the smaller baseline; final expanded setup/runtime/browser evidence belongs in [expansion verification](../implementation/expansion/verification.md).
 
 ## Required installations
 
-| Tool | Supported review setup | Purpose |
-| --- | --- | --- |
-| Git | An installed Git client | Clone the public repository |
-| Node.js | Version 22.16 or newer within major 22; 22.16.0 tested | Run all five applications and setup tools |
-| npm | Version 10.9.2 or newer within major 10; 10.9.2 tested | Install all workspace dependencies from one lockfile |
-| Docker and Compose | Docker Desktop, or Docker Engine with Compose v2 supporting `--wait` | Run MongoDB and NATS |
-
-The root `engines` and `packageManager` fields declare the runtime; `.nvmrc` selects Node 22.16.0 for compatible version managers. Check `node --version`, `npm --version`, `git --version` and `docker compose version`. Docker must be running and reachable by the shell issuing Compose commands. Initial installation needs access to GitHub, the public npm registry and Docker image registries.
-
-MongoDB, its shell and NATS are supplied by the pinned container images. Angular CLI, NestJS, TypeScript, MongoDB/NATS clients, tsx and test tools are supplied by `npm ci`. There is no additional global CLI or separately installed database service to configure.
+Git, Node >=22.16.0 <23, npm >=10.9.2 <11 and Docker Compose v2 supporting `--wait`. Locked npm supplies framework/tooling/driver clients; Docker supplies MongoDB and NATS. No external account/API key/private registry/global Angular or Nest CLI is required. Public registry access is needed for initial installation.
 
 ## Install and initialize
 
-Run from a terminal:
+From the delivered expansion checkout:
 
 ```sh
-git clone https://github.com/yassin-hakim/stockflow.git
-cd stockflow
 npm ci
 npm run configure
 docker compose up -d --wait
 npm run setup:mongo
+npm run migrate:inventory
 npm run setup:nats
 ```
 
-`configure` creates four missing `.env` files and preserves existing ones. Defaults use localhost and service-owned databases. Actual `.env` files are ignored by Git. `setup:mongo` waits for a writable `rs0` primary, required for Inventory transactions. `setup:nats` creates `STOCK_EVENTS` and durable consumer `stock-audit`. Both setup commands can be repeated.
+Configure creates five missing backend `.env` files and preserves existing ones. Inspect preserved Sales/BFF settings and match Product/Inventory/Sales currency, default USD. Migration is required before Inventory startup. Existing data requires stopped writers and the [migration procedure](operations.md#inventory-migration-procedure). Windows/WSL has [specific commands](operations.md#windows-with-docker-in-wsl).
 
-Windows users with Docker only inside WSL should follow the [WSL commands](operations.md#windows-with-docker-in-wsl), then run npm commands from PowerShell. With Docker Desktop available in PowerShell, the commands above apply directly.
+## Run all six applications
 
-## Run all five applications
+Open six terminals at repository root:
 
-Open five terminals in the cloned repository root. Keep each running:
-
-| Process | Command | Default address / result |
+| Process | Command | Address |
 | --- | --- | --- |
-| Product Service | `npm run dev:product` | `http://localhost:3001/health/ready` |
-| Inventory Service | `npm run dev:inventory` | `http://localhost:3002/health/ready` |
+| Product | `npm run dev:product` | `http://localhost:3001/health/ready` |
+| Inventory | `npm run dev:inventory` | `http://localhost:3002/health/ready` |
+| Sales | `npm run dev:sales` | `http://localhost:3003/health/ready` |
 | BFF | `npm run dev:bff` | `http://localhost:3000/health/ready` |
-| Audit worker | `npm run dev:audit` | Logs attachment to `stock-audit`; no web page |
-| Angular | `npm run dev:frontend` | Open `http://localhost:4200` |
+| Audit | `npm run dev:audit` | Both durable-consumer attachment logs |
+| Angular | `npm run dev:frontend` | `http://localhost:4200` |
 
-MongoDB uses port 27017. NATS uses 4222, with monitoring on 8222. These and the four application ports must be free. The HTTP readiness endpoints should return HTTP 200. No seed is required: a fresh database opens with an empty product list.
-
-For compiled backends, run `npm run build`, then replace the four backend `dev:*` commands with `npm run start -w @stockflow/product-service`, `npm run start -w @stockflow/inventory-service`, `npm run start -w @stockflow/bff` and `npm run start -w @stockflow/audit-worker`. These scripts also load `.env`. Keep the Angular development server for the local `/api` proxy.
+Ports 3000–3003, 4200, 27017, 4222 and 8222 must be free. Fresh schema supplies Main Store without a business seed. Inspect owner readiness and connected flow separately. Compiled backends use `npm run build` and each workspace's `start` script; keep Angular dev server for local proxy.
 
 ## Review the workflow
 
-Create **Arabica Coffee**, unit `kg`, category `Coffee`, low-stock threshold `5`. It starts at `0 kg` / `OUT`. Add `50` with a reason, remove `10`, then attempt to remove `50`. The final balance remains `40 kg`, with two movements and a readable insufficient-stock error.
-
-With every application and both containers running, execute:
-
-```sh
-npm run verify:demo
-```
-
-The verifier creates its own test products. It checks the core scenario, rejection without a movement/event, idempotent replay, concurrent removals, concurrent first additions and eventual MongoDB audit records through NATS. Read the [walkthrough](walkthrough.md) and [technology source map](technology-guide.md#source-and-verification-map) to inspect how all eight required technologies participate.
-
-Optional code checks:
+[Walkthrough](walkthrough.md) covers receiving 20 kg coffee/10 L milk, transferring 5 kg/2 L to Bar, latte recipe, three sales, waste/count/replenishment, rejected bundle and no-restock correction. Inspect documents/operations/receipts and eventual Audit. Legacy Main Store compatibility remains 0 → 50 → 40 → rejected 50 via `npm run verify:demo`.
 
 ```sh
 npm run build
@@ -69,12 +46,13 @@ npm test
 npm run test -w @stockflow/frontend -- --watch=false
 npm run check:boundaries
 npm run check:docs
+npm run verify:inventory-expansion
 ```
 
-The fresh-clone [review verification](review-verification.md) records the executed checks and startup results.
+The isolated Inventory fixture proves real transactions/controlled invariants, not complete HTTP/Sales/broker/browser acceptance. See [testing](testing.md) and [source map](technology-guide.md#source-and-verification-map).
 
 ## Stop or troubleshoot
 
-Stop the five terminals with Ctrl+C, then run `docker compose down`. Named volumes preserve data for the next review. The [operations guide](operations.md#recovery-guide) covers port conflicts, Docker access, missing consumer, replica-set setup and dependency failures. On Windows, use `npm.cmd` when passing extra CLI flags through npm if PowerShell strips them.
+Stop terminals with Ctrl+C and `docker compose down`; named volumes preserve data. `down -v` is destructive. [Recovery guide](operations.md#recovery-guide) covers startup, pending outcomes and notification backlog. Use `npm.cmd` if PowerShell strips extra flags.
 
-This is a local architectural demonstration with no authentication. Cross-platform instructions are provided; the executed clean-clone verification used Windows host processes and Docker in WSL. Hosting the app publicly, production credentials and clustering are outside the review setup.
+These commands support trusted unauthenticated local review. Expanded fresh-clone success, public hosting and deployment need separate evidence.

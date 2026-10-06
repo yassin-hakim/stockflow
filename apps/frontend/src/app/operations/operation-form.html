@@ -1,0 +1,170 @@
+<app-section-nav area="operations" />
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Stock movement</span>
+    <h1>{{ title }}</h1>
+    <p class="muted">
+      {{
+        kind === 'transfers'
+          ? 'Move ingredients between locations. All lines move together.'
+          : kind === 'receipts'
+            ? 'Record a delivery and add all its ingredients together.'
+            : 'Record ingredients lost to spoilage, damage or preparation.'
+      }}
+    </p>
+  </div>
+  <a routerLink="/operations">Operation history</a>
+</div>
+@if (error()) {
+  <p class="error" role="alert" tabindex="-1">{{ error() | readable:products():locations():suppliers() }}</p>
+  @if(recoveryBlocked()){<button type="button" class="secondary" (click)="load()">Retry loading and recovery</button>}
+}
+@if (loading()) {
+  <p role="status">Loading products and locations…</p>
+} @else if (saved(); as result) {
+  <section>
+    <h2>Stock operation completed</h2>
+    <p class="success" role="status">
+      {{ label(result) }} · {{ result.movements.length }} stock movements recorded.
+    </p>
+    <p><a [routerLink]="['/operations', result.id]">View operation</a></p>
+    <button type="button" (click)="startNew()">Start another operation</button>
+  </section>
+} @else {
+  @if (pendingRequest(); as pending) {
+    <section class="pending-region" role="status">
+      <h2>Confirm the earlier operation</h2>
+      <p>
+        The original input and request identity are saved. Check its status or retry that same
+        request.
+      </p>
+      <button type="button" class="secondary" [disabled]="submitting()" (click)="checkStatus()">
+        Check status
+      </button>
+      @if (pending.kind !== kind) {
+        <a [routerLink]="['/', pending.kind, 'new']">Open saved operation</a>
+      }
+    </section>
+  }
+  <form class="panel operation-document" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <fieldset [disabled]="locked()">
+      <legend class="sr-only">Stock operation details</legend>
+      <h2>Location and reference</h2>
+      <div class="grid-2">
+        <div class="field">
+          <label for="operation-location">{{
+            kind === 'transfers' ? 'From location' : 'Location'
+          }}</label
+          ><select id="operation-location" formControlName="locationId" required>
+            <option value="">Choose a location</option>
+            @for (location of locations(); track location.id) {
+              <option [value]="location.id">{{ location.name }}</option>
+            }
+          </select>
+          @if(attempted() && !form.controls.locationId.value){<small class="error">Choose a storage location.</small>}
+        </div>
+        @if (kind === 'transfers') {
+          <div class="field">
+            <label for="operation-destination">To location</label
+            ><select id="operation-destination" formControlName="destinationLocationId" required>
+              <option value="">Choose a destination</option>
+              @for (location of locations(); track location.id) {
+                <option [value]="location.id">{{ location.name }}</option>
+              }
+            </select>
+            @if(attempted() && (!form.controls.destinationLocationId.value || form.controls.destinationLocationId.value===form.controls.locationId.value)){<small class="error">Choose a different destination.</small>}
+          </div>
+        }
+        <div class="field">
+          <label for="operation-reference">{{
+            kind === 'receipts' ? 'Delivery reference' : 'Reference'
+          }}</label
+          ><input id="operation-reference" formControlName="reference" maxlength="100" required />
+          @if(attempted() && !form.controls.reference.value.trim()){<small class="error">Enter a reference for this operation.</small>}
+        </div>
+        @if (kind === 'waste') {
+          <div class="field">
+            <label for="waste-category">Waste category</label
+            ><select id="waste-category" formControlName="wasteCategory">
+              <option value="SPOILAGE">Spoilage</option>
+              <option value="DAMAGE">Damage</option>
+              <option value="PREPARATION">Preparation loss</option>
+              <option value="EXPIRED">Expired</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+        }
+      </div>
+      @if(kind==='receipts'){<div class="field"><label for="receipt-supplier">Supplier (optional)</label><select id="receipt-supplier" formControlName="supplierId"><option value="">No supplier reference</option>@for(supplier of suppliers();track supplier.id){<option [value]="supplier.id">{{supplier.name}}</option>}</select><small><a routerLink="/suppliers">Manage supplier references</a></small></div>}
+      @if(sourceLoading()){<p role="status">Loading available source stock…</p>}
+      @if(sourceError()){<p class="error" role="alert">Available stock could not be loaded: {{ sourceError() | readable:products():locations():suppliers() }}</p><button type="button" class="secondary" (click)="loadSource()">Retry source stock</button>}
+      <h2 class="document-lines-title">Ingredients</h2>
+      <div formArrayName="lines" class="stack">
+        @for (line of lines.controls; track line; let index = $index) {
+          <div class="operation-line" [class.receipt-line]="kind==='receipts'" [formGroupName]="index">
+            <div class="field">
+              <label [for]="'product-' + index">Product {{ index + 1 }}</label
+              ><select [id]="'product-' + index" formControlName="productId" required>
+                <option value="">Choose a product</option>
+                @for (product of products(); track product.id) {
+                  <option [value]="product.id">{{ product.name }} · {{ product.unit }}</option>
+                }
+              </select>
+              @if(attempted() && !line.controls.productId.value){<small class="error">Choose a product.</small>}
+              @if(kind!=='receipts' && available(line.controls.productId.value);as stock){<small>{{stock}} at the source</small>}
+            </div>
+            <div class="field">
+              <label [for]="'quantity-' + index"
+                >Quantity {{ unit(line.controls.productId.value) }}</label
+              ><input
+                [id]="'quantity-' + index"
+                formControlName="quantity"
+                type="number"
+                min="0.001"
+                step="0.001"
+                required
+                [attr.aria-invalid]="attempted() && invalidQuantity(line.controls.quantity.value) ? 'true':null"
+              />
+              @if(attempted() && invalidQuantity(line.controls.quantity.value)){<small class="error">Use a positive quantity with at most three decimal places.</small>}
+            </div>
+            @if(kind==='receipts'){
+              <div class="field"><label [for]="'cost-'+index">Cost per {{unit(line.controls.productId.value) || 'base unit'}} ({{currency()}})</label><input [id]="'cost-'+index" formControlName="unitCost" type="text" inputmode="decimal" required [attr.aria-invalid]="attempted() && invalidCost(line.controls.unitCost.value)?'true':null" />@if(attempted() && invalidCost(line.controls.unitCost.value)){<small class="error">Enter a nonnegative cost with at most two decimal places. Use 0 for free stock.</small>}</div>
+            }
+            <button
+              type="button"
+              class="secondary"
+              [disabled]="lines.length === 1"
+              [attr.aria-label]="'Remove product line ' + (index + 1)"
+              (click)="removeLine(index)"
+            >
+              Remove line
+            </button>
+          </div>
+        }
+      </div>
+      <p>
+        <button
+          type="button"
+          class="secondary"
+          [disabled]="lines.length >= 100"
+          (click)="addLine()"
+        >
+          Add product line
+        </button>
+      </p>
+      <div class="field">
+        <label for="operation-reason">Reason</label
+        ><input id="operation-reason" formControlName="reason" maxlength="200" required />
+        @if(attempted() && !form.controls.reason.value.trim()){<small class="error">Explain this stock operation.</small>}
+      </div>
+    </fieldset>
+    <button
+      type="submit"
+      [disabled]="
+        submitting() || recoveryBlocked() || (pendingRequest() && pendingRequest()?.kind !== kind)
+      "
+    >
+      {{ submitting() ? 'Submitting…' : pendingRequest() ? 'Retry original request' : title }}
+    </button>
+  </form>
+}

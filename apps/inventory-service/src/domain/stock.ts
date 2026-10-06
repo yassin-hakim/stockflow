@@ -1,3 +1,4 @@
+import { roundedCost } from './valuation';
 import { randomUUID } from "node:crypto";
 import { MAX_QUANTITY_MILLIS, quantityMillis } from "@stockflow/primitives";
 
@@ -9,6 +10,7 @@ export type StockErrorCode =
   | "INVALID_REQUEST"
   | "IDEMPOTENCY_CONFLICT"
   | "PRODUCT_NOT_FOUND"
+  | "PRODUCT_ARCHIVED"
   | "INVENTORY_NOT_FOUND"
   | "UPSTREAM_UNAVAILABLE";
 export class StockError extends Error {
@@ -38,6 +40,8 @@ export interface StockCommand {
   idempotencyKey: string;
 }
 export interface InventoryItemState {
+  valueMinor?:number|null;
+  valueCurrency?:string;
   productId: string;
   quantityMillis: number;
   version: number;
@@ -147,6 +151,7 @@ function applyChange(
     item: {
       productId: command.productId,
       quantityMillis: after,
+      ...(item?.valueMinor!==undefined?{valueMinor:after===0?0:command.type==='REMOVE'&&item.valueMinor!==null?item.valueMinor-roundedCost(item.valueMinor,command.quantityMillis,item.quantityMillis):null,valueCurrency:item.valueCurrency}:{}),
       version: (item?.version ?? 0) + 1,
       createdAt: item?.createdAt ?? createdAt,
       updatedAt: createdAt,

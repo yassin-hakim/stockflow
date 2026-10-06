@@ -63,6 +63,7 @@ export interface StockStore
   extends InventoryRepository, StockMovementRepository, StockUnitOfWork {}
 export interface ProductCatalog {
   exists(productId: string): Promise<boolean>;
+  get?(productId: string): Promise<{ id: string; archivedAt?: string | null }>;
 }
 
 export class StockUseCases {
@@ -77,6 +78,7 @@ export class StockUseCases {
       const before = await this.store.find(command.productId);
       let change: StockChange;
       try {
+        if (command.type === 'ADD' && this.products.get && (await this.products.get(command.productId)).archivedAt) throw new StockError('PRODUCT_ARCHIVED', 'Archived products cannot receive new stock.');
         if (!before && command.type === "REMOVE")
           throw new StockError(
             "INSUFFICIENT_STOCK",

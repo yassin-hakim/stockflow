@@ -1,5 +1,5 @@
 export function requiredHttpUrl(
-  name: "PRODUCT_SERVICE_URL" | "INVENTORY_SERVICE_URL",
+  name: "PRODUCT_SERVICE_URL" | "INVENTORY_SERVICE_URL" | 'SALES_SERVICE_URL',
 ): string {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is required.`);

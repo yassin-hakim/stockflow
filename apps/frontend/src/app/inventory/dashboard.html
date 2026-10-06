@@ -1,14 +1,23 @@
+<app-section-nav area="inventory" />
 <div class="page-head">
   <div>
+    <span class="eyebrow">Ingredients</span>
     <h1>Inventory</h1>
-    <p class="muted">Current stock across your products</p>
+    <p class="muted">{{locationId() ? 'Stock in the selected storage location' : 'Restaurant totals across all locations'}}</p>
   </div>
-  <a class="button" routerLink="/products/new">Create product</a>
+  <div class="action-links"><a class="button secondary" routerLink="/receipts/new">Receive delivery</a><a class="button" routerLink="/products/new">Create product</a></div>
+</div>
+<div class="inventory-filters">
+  <div class="field"><label for="inventory-location">Stock location</label><select id="inventory-location" [value]="locationId()" (change)="pager.reset();locationId.set($any($event.target).value);load()"><option value="" [selected]="!locationId()">Restaurant total</option>@for(location of locations();track location.id){<option [value]="location.id" [selected]="location.id === locationId()">{{location.name}}</option>}</select></div>
+  <div class="field"><label for="inventory-search">Search products or SKU</label><input id="inventory-search" type="search" [value]="query()" (input)="pager.reset();query.set($any($event.target).value)" /></div>
+  <div class="field"><label for="inventory-category">Category</label><select id="inventory-category" [value]="category()" (change)="pager.reset();category.set($any($event.target).value)"><option value="">All categories</option>@for (value of categories(); track value) { <option [value]="value">{{ value }}</option> }</select></div>
+  <div class="field"><label for="inventory-status">Stock status</label><select id="inventory-status" [value]="status()" (change)="pager.reset();status.set($any($event.target).value)"><option value="">All statuses</option><option value="OUT">OUT</option><option value="LOW">LOW</option><option value="OK">OK</option></select></div>
+  <label class="check-field"><input type="checkbox" [checked]="showArchived()" (change)="pager.reset();showArchived.set($any($event.target).checked)" /> Include archived</label>
 </div>
 @if (loading()) {
   <p role="status">Loading inventory…</p>
 } @else if (error()) {
-  <div class="error" role="alert">{{ error() }}</div>
+  <div class="error" role="alert">{{ error() | readable:locations() }}</div>
   <p><button type="button" (click)="load()">Retry</button></p>
 } @else if (items().length === 0) {
   <section class="panel">
@@ -16,25 +25,30 @@
     <p>Create a product to start tracking stock.</p>
     <a routerLink="/products/new">Create product</a>
   </section>
+} @else if (filtered().length === 0) {
+  <p role="status">No products match these filters.</p>
 } @else {
+  <div class="list-heading"><h2>Stock on hand</h2><span>{{filtered().length}} products in this view</span></div>
   <div class="panel table-wrap desktop-table">
     <table>
       <thead>
         <tr>
           <th scope="col">Product</th>
           <th scope="col">Category</th>
-          <th scope="col">Stock</th>
+          <th scope="col" class="numeric">Stock on hand</th>
           <th scope="col">Status</th>
         </tr>
       </thead>
       <tbody>
-        @for (row of items(); track row.product.id) {
+        @for (row of pager.slice(filtered()); track row.product.id) {
           <tr>
             <td>
-              <a [routerLink]="['/products', row.product.id]">{{ row.product.name }}</a>
+              <a [routerLink]="['/products', row.product.id]" [queryParams]="{location:locationId()||null}">{{ row.product.name }}</a>
+              @if (row.product.sku) { <small class="muted"> · {{ row.product.sku }}</small> }
+              @if (row.product.archivedAt) { <small class="muted"> · Archived</small> }
             </td>
             <td>{{ row.product.category }}</td>
-            <td>{{ row.quantity }} {{ row.product.unit }}</td>
+            <td class="numeric"><strong>{{ row.quantity }}</strong> {{ row.product.unit }}</td>
             <td>
               <span class="status" [class]="'status ' + row.status">{{ row.status }}</span>
             </td>
@@ -44,12 +58,14 @@
     </table>
   </div>
   <div class="stack mobile-list">
-    @for (row of items(); track row.product.id) {
+    @for (row of pager.slice(filtered()); track row.product.id) {
       <article class="panel">
         <h2>
-          <a [routerLink]="['/products', row.product.id]">{{ row.product.name }}</a>
+          <a [routerLink]="['/products', row.product.id]" [queryParams]="{location:locationId()||null}">{{ row.product.name }}</a>
         </h2>
         <p>{{ row.product.category }}</p>
+        @if (row.product.sku) { <p class="muted">SKU: {{ row.product.sku }}</p> }
+        @if (row.product.archivedAt) { <p class="muted">Archived</p> }
         <p>
           <strong>{{ row.quantity }} {{ row.product.unit }}</strong>
           <span class="status" [class]="'status ' + row.status">{{ row.status }}</span>
@@ -58,3 +74,5 @@
     }
   </div>
 }
+
+@if(!loading()){<app-pagination [total]="filtered().length" [page]="pager.current(filtered().length)" [size]="pager.size()" [hasMore]="false" [busy]="loading() || pager.busy()" (pageChange)="pager.page.set($event)" (sizeChange)="pager.resize($event)" />}

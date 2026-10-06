@@ -1,9 +1,9 @@
-import type { StockEventV1 } from "@stockflow/contracts";
+import type { StockEvent } from "@stockflow/contracts";
 
 export interface PendingEvent {
   eventId: string;
   subject: "inventory.stock.added" | "inventory.stock.removed";
-  payload: StockEventV1;
+  payload: StockEvent;
   attempts: number;
 }
 export interface OutboxRepository {

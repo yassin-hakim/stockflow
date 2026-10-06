@@ -4,10 +4,12 @@ import { MongoClient } from 'mongodb';
 import { MongoStockStore } from '../apps/inventory-service/src/infrastructure/mongo-stock-store';
 import { changeStock, type StockCommand } from '../apps/inventory-service/src/domain/stock';
 import { toPersistedChange } from '../apps/inventory-service/src/application/stock-use-cases';
+import { migrateInventory } from '../apps/inventory-service/src/infrastructure/inventory-migration';
 
 async function main(): Promise<void> {
   const mongo = await MongoClient.connect(process.env.TEST_MONGO_URI ?? 'mongodb://localhost:27017/stockflow_inventory_test?replicaSet=rs0&directConnection=true');
   try {
+    await migrateInventory(mongo);
     const store = new MongoStockStore(mongo);
     await store.setup();
     const productId = randomUUID();

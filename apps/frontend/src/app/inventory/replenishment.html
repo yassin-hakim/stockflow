@@ -1,0 +1,176 @@
+<app-section-nav area="inventory" />
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Stock planning</span>
+    <h1>Replenishment</h1>
+    <p class="muted">Review stock and targets separately for each storage location.</p>
+  </div>
+  <div class="action-links">
+    <a routerLink="/inventory">Inventory</a
+    ><a routerLink="/receipts/new" [queryParams]="{ locationId: locationId() }">Receive delivery</a>
+  </div>
+</div>
+@if (error()) {
+  <p id="replenishment-error" class="error" role="alert" tabindex="-1">{{ error() | readable:productNames():locations() }}</p>
+}
+@if (message()) {
+  <p class="success" role="status">{{ message() }}</p>
+}
+<div class="inventory-filters">
+  <div class="field">
+    <label for="replenishment-location">Storage location</label
+    ><select
+      id="replenishment-location"
+      [value]="locationId()"
+      [disabled]="busy()"
+      (change)="select($any($event.target).value)"
+    >
+      @for (location of locations(); track location.id) {
+        <option [value]="location.id" [selected]="location.id === locationId()">{{ location.name }}</option>
+      }
+    </select>
+  </div>
+  <button type="button" class="secondary" [disabled]="busy() || loading()" (click)="load()">
+    Refresh stock
+  </button>
+</div>
+@if (editing(); as row) {
+  <section>
+    <h2>{{ row.product.name }} target · {{ row.product.unit }}</h2>
+    <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <fieldset [disabled]="busy()">
+        <legend class="sr-only">Replenishment policy</legend>
+        <div class="grid-2">
+          <div class="field">
+            <label for="replenishment-threshold">Low-stock threshold {{ row.product.unit }}</label
+            ><input
+              id="replenishment-threshold"
+              type="number"
+              min="0"
+              step="0.001"
+              formControlName="lowStockThreshold"
+              required
+            /><small>Stock at or below this quantity can need replenishment.</small>
+          </div>
+          <div class="field">
+            <label for="replenishment-target">Target quantity {{ row.product.unit }}</label
+            ><input
+              id="replenishment-target"
+              type="number"
+              min="0"
+              step="0.001"
+              formControlName="targetQuantity"
+              required
+            /><small>Must be at least the threshold. Zero is valid.</small>
+          </div>
+        </div>
+      </fieldset>
+      <div class="action-links">
+        <button [disabled]="busy()">{{ busy() ? 'Saving…' : 'Save location policy' }}</button
+        ><button type="button" class="secondary" [disabled]="busy()" (click)="cancel()">
+          Cancel editing
+        </button>
+      </div>
+    </form>
+  </section>
+}
+@if (loading()) {
+  <p role="status">Loading location stock and replenishment policies…</p>
+} @else if (error()) {
+  <button type="button" class="secondary" [disabled]="busy()" (click)="loadLocations()">
+    Retry replenishment
+  </button>
+} @else if (!locationId()) {
+  <p>
+    No storage location exists. <a routerLink="/locations">Create a location</a> to configure
+    replenishment.
+  </p>
+} @else if (rows().length === 0) {
+  <p>
+    No active ingredients exist. <a routerLink="/products/new">Create an ingredient</a> to configure
+    its target.
+  </p>
+} @else {
+  <div class="table-wrap desktop-table" role="region" aria-label="Replenishment stock table" tabindex="0">
+    <table>
+      <thead>
+        <tr>
+          <th>Ingredient</th>
+          <th class="numeric">Stock</th>
+          <th>Status</th>
+          <th class="numeric">Threshold</th>
+          <th class="numeric">Target</th>
+          <th class="numeric">Needed</th>
+          <th>Policy</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of pager.slice(rows()); track row.product.id) {
+          <tr>
+            <td>
+              <a [routerLink]="['/products', row.product.id]">{{ row.product.name }}</a>
+            </td>
+            <td class="numeric">{{ row.quantity }} {{ row.product.unit }}</td>
+            <td>
+              <span class="status" [class]="'status ' + row.status">{{ row.status }}</span>
+            </td>
+            <td class="numeric">{{ row.lowStockThreshold }} {{ row.product.unit }}</td>
+            <td class="numeric">
+              {{ row.targetQuantity === null ? 'Not configured' : row.targetQuantity }}
+              @if (row.targetQuantity !== null) {
+                {{ row.product.unit }}
+              }
+            </td>
+            <td class="numeric">
+              {{ row.suggestedQuantity === null ? 'Configure target' : row.suggestedQuantity }}
+              @if (row.suggestedQuantity !== null) {
+                {{ row.product.unit }}
+              }
+            </td>
+            <td>
+              <button class="secondary" type="button" [disabled]="busy()" (click)="edit(row)">
+                {{ row.targetQuantity === null ? 'Configure' : 'Edit target' }}
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <ul class="mobile-list record-list">
+    @for (row of pager.slice(rows()); track row.product.id) {
+      <li>
+        <a [routerLink]="['/products', row.product.id]"
+          ><strong>{{ row.product.name }}</strong></a
+        >
+        <p>
+          Stock {{ row.quantity }} {{ row.product.unit }} ·
+          <span [class]="'status ' + row.status">{{ row.status }}</span>
+        </p>
+        <p>
+          Threshold {{ row.lowStockThreshold }} {{ row.product.unit }} · Target
+          {{ row.targetQuantity === null ? 'Not configured' : row.targetQuantity }}
+          @if (row.targetQuantity !== null) {
+            {{ row.product.unit }}
+          }
+        </p>
+        <p>
+          Needed {{ row.suggestedQuantity === null ? 'Configure target' : row.suggestedQuantity }}
+          @if (row.suggestedQuantity !== null) {
+            {{ row.product.unit }}
+          }
+        </p>
+        <button class="secondary" type="button" [disabled]="busy()" (click)="edit(row)">
+          {{ row.targetQuantity === null ? 'Configure target' : 'Edit target' }}
+        </button>
+      </li>
+    }
+  </ul>
+  <p class="muted">
+    Suggested quantities come from current recorded stock. Ingredients without a target require
+    configuration; stock in another location does not cover this location's needs.
+  </p>
+}
+
+
+@if(!loading()){<app-pagination [total]="rows().length" [page]="pager.current(rows().length)" [size]="pager.size()" [hasMore]="false" [busy]="loading() || pager.busy()" (pageChange)="pager.page.set($event)" (sizeChange)="pager.resize($event)" />}

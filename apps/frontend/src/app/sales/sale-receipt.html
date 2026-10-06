@@ -1,0 +1,31 @@
+@if (error()) {
+  <p class="error" role="alert">{{ error() | readable }}</p>
+  <button class="secondary receipt-actions" (click)="load()">Retry receipt</button>
+} @else if (loading()) {
+  <p role="status">Loading recorded receipt…</p>
+} @else if (sale(); as order) {
+  <article class="receipt panel">
+    <header class="receipt-head">
+      <span class="eyebrow">Completed sale</span><h1>StockFlow receipt</h1>
+      <p class="reference">{{ label(order) }}</p>
+      <p>{{ order.issuedAt ?? order.updatedAt | date: 'medium' }} · {{ order.tender }}</p>
+    </header>
+    <ul class="receipt-items">
+      @for (line of order.lines; track line.id) {
+        <li>
+          <div>
+            <strong>{{ line.quantity }} × {{ line.name }}</strong
+            ><small>{{ line.priceMinor / 100 | currency: order.currency }} each</small>
+          </div>
+          <strong>{{ line.totalMinor / 100 | currency: order.currency }}</strong>
+        </li>
+      }
+    </ul>
+    <p class="sale-total">Total {{ order.totalMinor / 100 | currency: order.currency }}</p>
+    <p class="muted">Recorded tender: {{ order.tender }}</p>
+    <div class="action-links receipt-actions">
+      <button type="button" (click)="print()">Print receipt</button
+      ><a [routerLink]="['/sales', order.id]">Back to sale</a><a routerLink="/pos">Point of sale</a>
+    </div>
+  </article>
+}

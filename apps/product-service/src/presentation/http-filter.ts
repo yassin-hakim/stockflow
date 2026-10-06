@@ -9,7 +9,8 @@ import {
 import { randomUUID } from "node:crypto";
 import { MongoError } from "mongodb";
 import { ProductNotFoundError } from "../application/product-use-cases";
-import { InvalidProductError } from "../domain/product";
+import { CatalogError, InvalidProductError } from "../domain/product";
+import { MenuError } from '../domain/menu-item';
 
 @Catch()
 export class HttpErrorFilter implements ExceptionFilter {
@@ -26,7 +27,15 @@ export class HttpErrorFilter implements ExceptionFilter {
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let code = "INTERNAL_ERROR";
     let message = "Unexpected server error.";
-    if (error instanceof ProductNotFoundError) {
+    if (error instanceof MenuError) {
+      status = error.status;
+      code = error.code;
+      message = error.message;
+    } else if (error instanceof CatalogError) {
+      status = error.code.endsWith('NOT_FOUND') ? 404 : 409;
+      code = error.code;
+      message = error.message;
+    } else if (error instanceof ProductNotFoundError) {
       status = 404;
       code = "PRODUCT_NOT_FOUND";
       message = error.message;

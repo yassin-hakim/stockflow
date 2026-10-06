@@ -8,30 +8,37 @@
     <a routerLink="/inventory">Return to inventory</a>
   </section>
 } @else if (loadError()) {
-  <div class="error" role="alert">{{ loadError() }}</div>
+  <div class="error" role="alert">{{ loadError() | readable:productNames():locations() }}</div>
   <p><button type="button" (click)="reload()">Retry</button></p>
 } @else if (overview(); as stock) {
   <div class="page-head">
     <div>
-      <h1>{{ stock.product.name }}</h1>
+      <span class="eyebrow">Ingredient detail</span><h1>{{ stock.product.name }}</h1>
       <p class="muted">{{ stock.product.category }} · {{ stock.product.unit }}</p>
+      @if (stock.product.sku) { <p class="muted">SKU: {{ stock.product.sku }}</p> }
+      @if (stock.product.archivedAt) { <p role="status">Archived product · stock and history remain available.</p> }
+      @else { <a [routerLink]="['/products', stock.product.id, 'edit']">Edit product</a> }
     </div>
-    <span class="status" [class]="'status ' + stock.status">{{ stock.status }}</span>
   </div>
-  <section class="panel" style="margin-bottom: 1rem">
-    <h2>Current stock</h2>
-    <p style="font-size: 2rem; font-weight: 800; margin-bottom: 0.3rem">
-      {{ stock.quantity }} {{ stock.product.unit }}
-    </p>
-    <p class="muted">
-      Low-stock threshold: {{ stock.product.lowStockThreshold }} {{ stock.product.unit }}
-    </p>
+  <section class="stock-summary" aria-label="Current stock and location">
+    <div><h2>Stock on hand <span class="status" [class]="'status ' + stock.status">{{ stock.status }}</span></h2><p class="stock-quantity">{{ stock.quantity }} <span>{{ stock.product.unit }}</span></p><p class="muted">Low-stock threshold: {{ stock.product.lowStockThreshold }} {{ stock.product.unit }}</p></div>
+    <div><div class="field"><label for="product-location">Stock and action location</label><select id="product-location" [value]="locationId()" [disabled]="submitting() || uncertain() || recoveryBlocked()" (change)="locationId.set($any($event.target).value);reload()">@for(location of locations();track location.id){<option [value]="location.id" [selected]="location.id === locationId()">{{location.name}}</option>}</select></div>
+    @if(total();as aggregate){<p class="muted">Restaurant total: {{aggregate.quantity}} {{stock.product.unit}} · {{aggregate.status}}. Actions affect the selected location.</p>}</div>
   </section>
+  @if (total()?.locations; as balances) {
+    <section class="history-section" aria-label="Stock by location">
+      <h2>Stock by location</h2>
+      <ul class="record-list">@for(balance of locationPager.slice(balances);track balance.locationId){
+        <li><strong>{{balance.name}}</strong><span>{{balance.quantity}} {{stock.product.unit}} · {{balance.status}}</span></li>
+      }</ul>
+      <app-pagination label="Location stock pages" [total]="balances.length" [page]="locationPager.current(balances.length)" [size]="locationPager.size()" (pageChange)="locationPager.page.set($event)" (sizeChange)="locationPager.resize($event)" />
+    </section>
+  }
   @if (message()) {
     <p class="success" role="status">{{ message() }}</p>
   }
   @if (actionError()) {
-    <p class="error" role="alert" tabindex="-1" data-action-error>{{ actionError() }}</p>
+    <p class="error" role="alert" tabindex="-1" data-action-error>{{ actionError() | readable:productNames():locations() }}</p>
   }
   @if (uncertain()) {
     <p class="error" role="alert">
@@ -44,12 +51,13 @@
       </button>
     </p>
   }
-  <div class="grid-2" style="margin-bottom: 1rem">
+  <div class="grid-2 stock-actions">
     <app-stock-action-form
       type="add"
       [unit]="stock.product.unit"
       [form]="addForm"
-      [submitting]="submitting() || recoveryBlocked()"
+      [submitting]="submitting()"
+      [disabled]="recoveryBlocked() || !!stock.product.archivedAt"
       [validation]="validation()"
       (submitted)="submit('add')"
     />
@@ -57,17 +65,25 @@
       type="remove"
       [unit]="stock.product.unit"
       [form]="removeForm"
-      [submitting]="submitting() || recoveryBlocked()"
+      [submitting]="submitting()"
+      [disabled]="recoveryBlocked()"
       [validation]="validation()"
       (submitted)="submit('remove')"
     />
   </div>
-  <section class="panel">
+  <section class="history-section">
     <h2>Movement history</h2>
+    <form class="inventory-filters" [formGroup]="historyFilters" (ngSubmit)="loadHistory()">
+      <div class="field"><label for="movement-cause">Movement purpose</label><select id="movement-cause" formControlName="cause"><option value="">All purposes</option><option value="MANUAL">Manual adjustments</option><option value="RECEIPT">Receiving</option><option value="TRANSFER">Transfers</option><option value="WASTE">Waste</option><option value="COUNT">Count adjustments</option><option value="SALE">Sale consumption</option><option value="SALE_RETURN">Sale stock returns</option></select></div>
+      <div class="field"><label for="movement-from">From</label><input id="movement-from" type="datetime-local" formControlName="from" /></div>
+      <div class="field"><label for="movement-to">Before</label><input id="movement-to" type="datetime-local" formControlName="to" /></div>
+      <button type="submit" [disabled]="historyLoading() || pager.busy()">Apply filters</button>
+    </form>
+    @if(historyValidation()){<p class="error" role="alert">{{historyValidation()}}</p>}
     @if (historyLoading()) {
       <p role="status">Loading movements…</p>
     } @else if (historyError()) {
-      <p class="error" role="alert">{{ historyError() }}</p>
+      <p class="error" role="alert">{{ historyError() | readable:productNames():locations() }}</p>
       <button type="button" (click)="loadHistory()">Retry history</button>
     } @else if (movements().length === 0) {
       <p class="muted">No stock movements yet.</p>
@@ -78,27 +94,27 @@
             <tr>
               <th scope="col">Date</th>
               <th scope="col">Type</th>
-              <th scope="col">Quantity</th>
+              <th scope="col" class="numeric">Quantity</th>
               <th scope="col">Reason</th>
             </tr>
           </thead>
           <tbody>
-            @for (movement of movements(); track movement.id) {
+            @for (movement of pager.slice(movements()); track movement.id) {
               <tr>
                 <td>{{ movement.createdAt | date: 'medium' }}</td>
                 <td>{{ movement.type }}</td>
-                <td>
+                <td class="numeric">
                   {{ movement.type === 'ADD' ? '+' : '−' }}{{ movement.quantity }}
                   {{ stock.product.unit }}
                 </td>
-                <td>{{ movement.reason }}</td>
+                <td>{{ movementReason(movement.reason) }}</td>
               </tr>
             }
           </tbody>
         </table>
       </div>
       <div class="stack mobile-list">
-        @for (movement of movements(); track movement.id) {
+        @for (movement of pager.slice(movements()); track movement.id) {
           <article>
             <strong
               >{{ movement.type === 'ADD' ? '+' : '−' }}{{ movement.quantity }}
@@ -110,10 +126,11 @@
                 movement.createdAt | date: 'medium'
               }}</time>
             </div>
-            <p>{{ movement.reason }}</p>
+            <p>{{ movementReason(movement.reason) }}</p>
           </article>
         }
       </div>
     }
   </section>
+  <app-pagination [total]="movements().length" [page]="pager.current(movements().length)" [size]="pager.size()" [hasMore]="!!historyCursor()" [busy]="historyLoading() || pager.busy()" (pageChange)="pageTo($event)" (sizeChange)="resizePage($event)" />
 }

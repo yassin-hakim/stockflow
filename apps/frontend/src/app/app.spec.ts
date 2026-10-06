@@ -22,4 +22,20 @@ describe('App', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('.brand')?.textContent).toContain('StockFlow');
   });
+
+  it('exposes the mobile menu state and returns focus on Escape', async () => {
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    const button = fixture.nativeElement.querySelector('.nav-toggle') as HTMLButtonElement;
+    const nav = fixture.nativeElement.querySelector('#main-navigation') as HTMLElement;
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    button.click();
+    await fixture.whenStable();
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(nav.classList.contains('open')).toBe(true);
+    nav.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await fixture.whenStable();
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(button);
+  });
 });

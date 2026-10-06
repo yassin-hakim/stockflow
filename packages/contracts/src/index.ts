@@ -9,6 +9,9 @@ export interface Product {
   lowStockThreshold: number;
   createdAt: string;
   updatedAt: string;
+  sku?: string | null;
+  version?: number;
+  archivedAt?: string | null;
 }
 
 export interface InventoryRecord {
@@ -55,3 +58,5 @@ export interface ApiError {
 }
 
 export interface Items<T> { items: T[] }
+
+export * from './operations';

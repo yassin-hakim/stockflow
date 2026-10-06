@@ -1,30 +1,30 @@
 # How the required technologies fit StockFlow
 
-This is a project-specific guide, not a general tutorial. The [architecture](architecture.md) defines the boundaries; the linked documents define the implementation contracts. Application manifests, Compose image versions and the NATS setup script are in use. Runtime acceptance evidence is recorded in the [implementation verification report](../implementation/verification.md).
+This is a project-specific guide, not a general tutorial. The [architecture](architecture.md) defines the boundaries; the linked documents define the implementation contracts. Application manifests, Compose image versions and the NATS setup script are in use. Original baseline evidence is recorded in [implementation verification](../implementation/verification.md); expanded acceptance is recorded separately in [expansion verification](../implementation/expansion/verification.md).
 
 ## NATS
 
-NATS JetStream carries committed `StockAdded` and `StockRemoved` integration events from Inventory Service to the audit worker. The Inventory application depends on an `EventPublisher` port; the official NATS JavaScript transport and JetStream packages implement it. `STOCK_EVENTS` uses file storage and WorkQueue retention, with a durable explicit-acknowledgment `stock-audit` consumer. MongoDB outbox records protect the publish gap; event-ID deduplication protects retries. NATS does not handle HTTP stock commands or own stock balances. See [events](events.md), [NATS concepts](https://docs.nats.io/concepts/what-is-nats), and the [official JavaScript client](https://github.com/nats-io/nats.js/).
+NATS JetStream carries stock v1/v2 from Inventory and Sales v1 completion/refund events from Sales to one audit worker. The Inventory application depends on an `EventPublisher` port; the official NATS JavaScript transport and JetStream packages implement it. `STOCK_EVENTS`/`stock-audit` and `SALES_EVENTS`/`sales-audit` use separate file-backed WorkQueue streams and explicit-acknowledgment consumers. MongoDB outbox records protect the publish gap; event-ID deduplication protects retries. NATS does not handle HTTP stock commands or own stock balances. See [events](events.md), [NATS concepts](https://docs.nats.io/concepts/what-is-nats), and the [official JavaScript client](https://github.com/nats-io/nats.js/).
 
 ## Microservices
 
-Product Service owns product data and Inventory Service owns stock data. They run independently and communicate through internal HTTP for the one required product-existence lookup. The BFF is a separate API process; the audit worker is a separate asynchronous component, not a third business bounded context. Database-per-owner prevents a convenient but harmful shared-collection shortcut. Keep the process count small and align it to responsibilities; no service discovery platform or distributed transaction manager is needed. See [architecture](architecture.md) and [backend](backend.md).
+Product owns ingredient/menu/recipe data, Inventory owns stock/location operations and Sales owns priced orders/corrections. They run independently and communicate over HTTP for catalog validation/snapshots and consume/return/status. The BFF is a separate API process; the audit worker is a separate asynchronous component, not a fourth business bounded context. Database-per-owner prevents a convenient but harmful shared-collection shortcut. Keep the process count small and align it to responsibilities; no service discovery platform or distributed transaction manager is needed. See [architecture](architecture.md) and [backend](backend.md).
 
 ## NestJS
 
-NestJS hosts the BFF, Product Service and Inventory Service HTTP applications and the audit worker's application context. Controllers validate transport data and map shared contract types; module providers connect use cases to repository, HTTP-client and NATS adapters. NestJS decorators and exceptions remain outside the domain. The stock rules are plain TypeScript and can be tested without a Nest application. See [backend](backend.md), [NestJS modules](https://docs.nestjs.com/modules), and [providers](https://docs.nestjs.com/providers).
+NestJS hosts the BFF, Product, Inventory and Sales HTTP applications and the audit worker's application context. Controllers validate transport data and map shared contract types; module providers connect use cases to repository, HTTP-client and NATS adapters. NestJS decorators and exceptions remain outside the domain. The stock rules are plain TypeScript and can be tested without a Nest application. See [backend](backend.md), [NestJS modules](https://docs.nestjs.com/modules), and [providers](https://docs.nestjs.com/providers).
 
 ## Angular
 
-Angular renders the dashboard, product form, product detail, stock forms and movement history. Standalone components, Router, reactive forms and typed `HttpClient` calls keep the client small. It targets only `/api` on the BFF and displays status returned by that API. Validation and loading states help the employee, while the service domain remains authoritative for stock rules. See [frontend](frontend.md) and [Angular HTTP](https://angular.dev/guide/http).
+Angular renders inventory/catalog, location/receiving/transfer/waste/count/replenishment, menu, POS, receipt/correction and report pages. Standalone components, Router, reactive forms and typed `HttpClient` calls keep the client small. It targets only `/api` on the BFF and displays status returned by that API. Validation and loading states help the employee, while the service domain remains authoritative for stock rules. See [frontend](frontend.md) and [Angular HTTP](https://angular.dev/guide/http).
 
 ## MongoDB
 
-MongoDB persists Product-owned products, Inventory-owned balances/movements/outbox, and audit-owned received events in separate databases on one local server. The official Node.js driver is used only by infrastructure adapters. Inventory transactions atomically commit a balance, movement and pending event; a local replica set is therefore required. Indexes protect unique product balance, idempotency and audit event IDs. MongoDB is not accessed by Angular or BFF. See [persistence](persistence.md) and [MongoDB transactions](https://www.mongodb.com/docs/manual/data-modeling/enforce-consistency/transactions/).
+MongoDB persists Product catalog/recipes, Inventory locations/operations/balances/outbox, Sales workflows/receipts/refunds/outbox and Audit events in four separate owner databases. The official Node.js driver is used only by infrastructure adapters. Inventory transactions atomically commit a balance, movement and pending event; a local replica set is therefore required. Indexes protect unique product/location balance, command identity, recipe revisions, receipts and event IDs. MongoDB is not accessed by Angular or BFF. See [persistence](persistence.md) and [MongoDB transactions](https://www.mongodb.com/docs/manual/data-modeling/enforce-consistency/transactions/).
 
 ## Domain-driven design
 
-The Product and Inventory bounded contexts have explicit ownership. `InventoryItem` contains the nonnegative-stock invariant and quantity-changing behavior; `StockMovement` and domain events represent successful changes. Use cases orchestrate, but controllers and persistence models do not decide business rules. The BFF's stock status is a presentation projection across contexts, not part of the Inventory aggregate. See [domain design](domain.md).
+Product, Inventory and Sales bounded contexts have explicit ownership. Legacy `InventoryItem` and expanded operation planning contain nonnegative-stock behavior; Sales domain functions validate checked pricing/consumption/refund totals; `StockMovement` and domain events represent successful changes. Use cases orchestrate, but controllers and persistence models do not decide business rules. The BFF's stock status is a presentation projection across contexts, not part of the Inventory aggregate. See [domain design](domain.md).
 
 ## Hexagonal architecture
 
@@ -36,7 +36,7 @@ The NestJS BFF is the only server contacted by Angular. It presents `/api`, vali
 
 ## Source and verification map
 
-Each row points to the production code where the technology or pattern participates in StockFlow, plus the check that exercises it. The runtime and test results below are recorded in the [verification report](../implementation/verification.md).
+Each row points to the production code where the technology or pattern participates in StockFlow, plus the check that exercises it. Named checks are targets, not proof that final release acceptance has completed; consult the baseline and expansion evidence separately.
 
 | Technology or pattern | Implemented in StockFlow | Verification evidence |
 | --- | --- | --- |
@@ -48,3 +48,14 @@ Each row points to the production code where the technology or pattern participa
 | DDD | [Product domain](../apps/product-service/src/domain/product.ts) and Inventory's [InventoryItem and stock rules](../apps/inventory-service/src/domain/stock.ts) model the bounded contexts and invariants; [use cases](../apps/inventory-service/src/application/stock-use-cases.ts) coordinate commands. | Pure domain and application unit suites plus the boundary check. |
 | Hexagonal architecture | Application [repository ports](../apps/product-service/src/application/product-repository.ts), [stock use-case ports](../apps/inventory-service/src/application/stock-use-cases.ts), and [event publisher port](../apps/inventory-service/src/application/publish-pending-events.ts) are implemented by MongoDB, HTTP and NATS [adapters](../apps/inventory-service/src/infrastructure/nats-event-publisher.ts). | `npm run check:boundaries` confirms inward dependency rules; unit tests use fake ports. |
 | BFF | [BffModule](../apps/bff/src/bff.module.ts), [internal HTTP client](../apps/bff/src/upstream.ts), and [inventory projection](../apps/bff/src/projection.ts) expose the UI's `/api` contract. | `verify:api` checks joined views and error mapping; Playwright confirms the Angular client calls only `/api`. |
+
+## Expanded source ownership
+
+| Behavior | Current implementation | Verification target |
+| --- | --- | --- |
+| Product edits and recipe revisions | [Product management](../apps/product-service/src/application/product-use-cases.ts), [menu domain](../apps/product-service/src/domain/menu-item.ts), [Mongo recipe repository](../apps/product-service/src/infrastructure/mongo-menu-repository.ts) | Product/menu unit tests; real conditional publication and historical reads |
+| Compound stock/count/returns | [Operation domain](../apps/inventory-service/src/domain/operations.ts), [Inventory management](../apps/inventory-service/src/application/inventory-management.ts), [Mongo operation store](../apps/inventory-service/src/infrastructure/mongo-operations-store.ts) | `verify:inventory-expansion`, migration fixture, real HTTP workflow |
+| Recoverable POS and corrections | [Sales use cases](../apps/sales-service/src/application/sales-use-cases.ts), [Sales transaction store](../apps/sales-service/src/infrastructure/mongo-sales-store.ts), [HTTP ports](../apps/sales-service/src/infrastructure/http-ports.ts) | Sales unit/recovery fixture, crash/restart around real Inventory commit |
+| Sales publication and Audit | [Background work](../apps/sales-service/src/infrastructure/background-work.ts), [NATS setup](../scripts/setup-nats.ts), [Audit](../apps/audit-worker/src/audit.ts) | Both stream/consumer resources, broker/worker outage and immutable dedup |
+| Owner reports/exports | [Inventory report queries](../apps/inventory-service/src/infrastructure/mongo-operations-store.ts), [Sales report queries](../apps/sales-service/src/infrastructure/mongo-sales-store.ts), [BFF exports](../apps/bff/src/reports-controller.ts) | Source reconciliation, UTC/cursors, source outage and spreadsheet-safe CSV |
+| Counts/Replenishment/POS | [Counts](../apps/frontend/src/app/inventory/stock-count.ts), [replenishment](../apps/frontend/src/app/inventory/replenishment.ts), [POS](../apps/frontend/src/app/sales/pos.ts) | Component recovery tests plus rendered desktop/mobile/keyboard states |

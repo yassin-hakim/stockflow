@@ -1,0 +1,420 @@
+<header class="page-head">
+  <div>
+    <span class="eyebrow">Operational records</span>
+    <h1>Reports</h1>
+    <p class="muted">Recorded sales, refunds and inventory movements for a selected period.</p>
+  </div>
+</header>
+<form class="report-filters" [formGroup]="form" (ngSubmit)="apply()" novalidate>
+  <div class="field">
+    <label for="report-kind">Report</label
+    ><select id="report-kind" formControlName="kind">
+      <option value="profit-loss">Profit &amp; loss (gross profit)</option>
+      <option value="sales">Sales and refunds</option>
+      <option value="inventory">Inventory movements</option>
+    </select>
+  </div>
+  <div class="field">
+    <label for="report-from">From (included)</label
+    ><input
+      id="report-from"
+      type="datetime-local"
+      formControlName="from"
+      required
+      aria-describedby="report-period-help"
+      [attr.aria-invalid]="validation() ? 'true' : null"
+    />
+  </div>
+  <div class="field">
+    <label for="report-to">Until (excluded)</label
+    ><input
+      id="report-to"
+      type="datetime-local"
+      formControlName="to"
+      required
+      aria-describedby="report-period-help"
+      [attr.aria-invalid]="validation() ? 'true' : null"
+    />
+  </div>
+  <div class="field">
+    <label for="report-location">Location</label
+    ><select id="report-location" formControlName="locationId" [attr.aria-busy]="locationLoading()">
+      <option value="">All locations</option>
+      @for (location of locations(); track location.id) {
+        <option [value]="location.id">{{ location.name }}</option>
+      }
+    </select>
+  </div>
+  @if (form.controls.kind.value === 'inventory') {
+    <div class="field">
+      <label for="report-cause">Movement cause</label
+      ><select id="report-cause" formControlName="cause">
+        <option value="">All movement causes</option>
+        @for (cause of causes; track cause.value) {
+          <option [value]="cause.value">{{ cause.label }}</option>
+        }
+      </select>
+    </div>
+  }
+  <button type="submit" [disabled]="loading() || loadingMore()">
+    {{ loading() ? 'Loading report…' : 'Apply filters' }}
+  </button>
+</form>
+<p class="muted" id="report-period-help">
+  Dates and times use your device's local timezone. Records at From are included; records at Until
+  are excluded.
+</p>
+@if (locationError()) {
+  <p class="error" role="alert">Location names could not be loaded. {{ locationError() | readable:locations() }}</p>
+  <p>
+    <button
+      type="button"
+      class="secondary"
+      [disabled]="locationLoading()"
+      (click)="loadLocations()"
+    >
+      Retry locations
+    </button>
+  </p>
+}
+@if (validation()) {
+  <p class="error" role="alert" tabindex="-1" id="report-validation">{{ validation() }}</p>
+}
+@if (filtersChanged()) {
+  <p class="muted" role="status">
+    Filters have changed. Apply them to update the report. CSV uses the displayed report's applied
+    filters.
+  </p>
+}
+@if (loading()) {
+  <p role="status">Loading report…</p>
+} @else if (error()) {
+  <p class="error" role="alert" tabindex="-1" id="report-error">
+    Report could not be loaded. {{ error() | readable:locations() }}
+  </p>
+  <button type="button" (click)="retry()">Retry report</button>
+} @else if (applied(); as scope) {
+  <section class="report-scope" aria-label="Applied report filters">
+    <div>
+      <h2>{{ scope.kind === 'profit-loss' ? 'Profit & loss' : scope.kind === 'sales' ? 'Sales and refunds' : 'Inventory movements' }}</h2>
+      <p>
+        <strong>{{
+          scope.form.locationId ? locationName(scope.form.locationId) : 'All locations'
+        }}</strong>
+        · From {{ scope.params['from'] | date: 'medium' }} (included) until
+        {{ scope.params['to'] | date: 'medium' }} (excluded).
+      </p>
+      @if (scope.kind === 'inventory' && scope.params['cause']) {
+        <p>Cause: {{ causeName(scope.params['cause']) }}</p>
+      }
+      <details>
+        <summary>Exact UTC period</summary>
+        <p>From {{ scope.params['from'] }}<br />Until {{ scope.params['to'] }}</p>
+      </details>
+    </div>
+    <button
+      type="button"
+      class="secondary"
+      [disabled]="exporting() || loadingMore()"
+      (click)="exportCsv()"
+    >
+      {{ exporting() ? 'Preparing CSV…' : 'Export CSV' }}
+    </button>
+  </section>
+  <p class="muted">
+    Totals cover every matching record. CSV includes all matching records, including pages not yet
+    loaded.
+  </p>
+  @if (exportError()) {
+    <p class="error" role="alert">CSV could not be downloaded. {{ exportError() | readable:locations() }}</p>
+  }
+  @if (success()) {
+    <p class="success" role="status">{{ success() }}</p>
+  }
+  @if(scope.kind==='profit-loss'){
+    @if(profit();as report){
+      <dl class="report-totals" aria-label="Profit and loss totals">
+        <div><dt>Gross sales</dt><dd>{{money(report.grossSalesMinor,report.currency)}}</dd></div>
+        <div><dt>Refunds</dt><dd>{{money(report.refundMinor,report.currency)}}</dd></div>
+        <div><dt>Net sales</dt><dd>{{money(report.netRevenueMinor,report.currency)}}</dd></div>
+        <div><dt>Ingredient costs</dt><dd>{{report.ingredientCostMinor===null?'Incomplete':money(report.ingredientCostMinor,report.currency)}}</dd></div>
+        <div><dt>Gross profit</dt><dd>{{report.grossProfitMinor===null?'Unavailable':money(report.grossProfitMinor,report.currency)}}</dd></div>
+      </dl>
+      <p class="muted">Costs use the recorded moving average when ingredients were consumed. Restocked refunds reverse their original ingredient cost; refunds without restocking reduce sales only.</p>
+      @if(report.missingCostRecords){<p class="error" role="status">{{report.missingCostRecords}} records have unrecorded ingredient costs. Known costs: {{money(report.knownCostMinor,report.currency)}}. Gross profit is unavailable until all costs are known.</p>}
+      @if(!report.items.length){<p>No completed sales or refunds in this period.</p>}
+      @else{
+        <div class="table-wrap desktop-table"><table><caption>Sales, ingredient costs and gross profit</caption><thead><tr><th scope="col">Recorded</th><th scope="col">Receipt / items</th><th scope="col">Location</th><th scope="col" class="numeric">Net sales</th><th scope="col" class="numeric">Ingredient cost</th><th scope="col" class="numeric">Gross profit</th></tr></thead><tbody>
+          @for(row of pager.slice(report.items);track row.kind+row.id){<tr><td>{{row.occurredAt|date:'medium'}}</td><td><a [routerLink]="['/sales',row.saleId]">{{salesReference(row)}}</a><p>{{row.kind==='SALE'?'Sale':'Refund'}}</p>@for(line of row.lines;track $index){<p>{{line.quantity}} × {{line.name}}</p>}</td><td>{{locationName(row.locationId)}}</td><td class="numeric">{{money(row.revenueMinor,row.currency)}}</td><td class="numeric">{{row.costMinor===null?'Unrecorded':money(row.costMinor,row.currency)}}</td><td class="numeric">{{row.grossProfitMinor===null?'Unavailable':money(row.grossProfitMinor,row.currency)}}</td></tr>}
+        </tbody></table></div>
+        <div class="mobile-list report-records">@for(row of pager.slice(report.items);track row.kind+row.id){<article><h3><a [routerLink]="['/sales',row.saleId]">{{salesReference(row)}}</a></h3><p>{{row.kind==='SALE'?'Sale':'Refund'}} · {{locationName(row.locationId)}} · {{row.occurredAt|date:'medium'}}</p>@for(line of row.lines;track $index){<p>{{line.quantity}} × {{line.name}}</p>}<dl><div><dt>Net sales</dt><dd>{{money(row.revenueMinor,row.currency)}}</dd></div><div><dt>Ingredient cost</dt><dd>{{row.costMinor===null?'Unrecorded':money(row.costMinor,row.currency)}}</dd></div><div><dt>Gross profit</dt><dd>{{row.grossProfitMinor===null?'Unavailable':money(row.grossProfitMinor,row.currency)}}</dd></div></dl></article>}</div>
+      }
+    }
+  } @else if (scope.kind === 'sales') {
+    @if (sales(); as report) {
+      <dl class="report-totals" aria-label="Sales totals">
+        <div>
+          <dt>Gross recorded sales</dt>
+          <dd>{{ money(report.grossMinor, report.currency) }}</dd>
+        </div>
+        <div>
+          <dt>Recorded refunds</dt>
+          <dd>{{ money(report.refundMinor, report.currency) }}</dd>
+        </div>
+        <div>
+          <dt>Net recorded sales</dt>
+          <dd>{{ money(report.netMinor, report.currency) }}</dd>
+        </div>
+        <div>
+          <dt>Completed sales</dt>
+          <dd>{{ report.completedSales | number }}</dd>
+        </div>
+        <div>
+          <dt>Items sold</dt>
+          <dd>{{ report.soldItems | number }}</dd>
+        </div>
+        <div>
+          <dt>Items refunded</dt>
+          <dd>{{ report.refundedItems | number }}</dd>
+        </div>
+      </dl>
+      <p class="muted">
+        Refunds are included by their recorded time. Draft, rejected and pending sales are excluded
+        from completed totals.
+      </p>
+      @if (!report.items.length) {
+        <section class="panel">
+          <h2>No completed sales or refunds in this period</h2>
+          <p>Change the period or location to view other records.</p>
+        </section>
+      } @else {
+        <div class="table-wrap desktop-table">
+          <table>
+            <caption>
+              Recorded sales and refunds
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Recorded</th>
+                <th scope="col">Record</th>
+                <th scope="col">Receipt</th>
+                <th scope="col">Location</th>
+                <th scope="col">Items</th>
+                <th scope="col" class="numeric">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of pager.slice(report.items); track row.kind + row.id) {
+                <tr>
+                  <td>{{ row.occurredAt | date: 'medium' }}</td>
+                  <td>{{ row.kind === 'SALE' ? 'Sale' : 'Refund' }}</td>
+                  <td>
+                    <a class="reference" [routerLink]="['/sales', row.saleId]">{{
+                      salesReference(row)
+                    }}</a>
+                  </td>
+                  <td>{{ locationName(row.locationId) }}</td>
+                  <td>
+                    <ul class="report-items">
+                      @for (line of row.lines; track $index) {
+                        <li>
+                          {{ line.quantity }} × {{ line.name }} ·
+                          {{ money(line.priceMinor, row.currency) }} each
+                        </li>
+                      }
+                    </ul>
+                  </td>
+                  <td class="numeric">
+                    {{ row.kind === 'REFUND' ? '−' : '' }}{{ money(row.amountMinor, row.currency) }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="mobile-list report-records">
+          @for (row of pager.slice(report.items); track row.kind + row.id) {
+            <article>
+              <h3>
+                <a class="reference" [routerLink]="['/sales', row.saleId]">{{ salesReference(row) }}</a>
+              </h3>
+              <p>
+                <strong
+                  >{{ row.kind === 'SALE' ? 'Sale' : 'Refund' }} ·
+                  {{ row.kind === 'REFUND' ? '−' : ''
+                  }}{{ money(row.amountMinor, row.currency) }}</strong
+                >
+              </p>
+              <p>{{ row.occurredAt | date: 'medium' }} · {{ locationName(row.locationId) }}</p>
+              <ul class="report-items">
+                @for (line of row.lines; track $index) {
+                  <li>
+                    {{ line.quantity }} × {{ line.name }} ·
+                    {{ money(line.priceMinor, row.currency) }} each
+                  </li>
+                }
+              </ul>
+            </article>
+          }
+        </div>
+      }
+    }
+  } @else if (inventory(); as report) {
+    @if (!report.products.length && !report.items.length) {
+      <section class="panel">
+        <h2>No inventory movements in this period</h2>
+        <p>Change the period, location or movement cause to view other records.</p>
+      </section>
+    } @else {
+      <h3>Totals by ingredient</h3>
+      <p class="muted">
+        Added and removed include all selected movement causes. Sale consumption, waste and
+        transfers are shown separately. Quantities use each ingredient's own unit.
+      </p>
+      <div class="table-wrap desktop-table">
+        <table>
+          <caption>
+            Ingredient movement totals for the entire applied period
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Ingredient / unit</th>
+              <th scope="col" class="numeric">Added</th>
+              <th scope="col" class="numeric">Removed</th>
+              <th scope="col" class="numeric">Consumed</th>
+              <th scope="col" class="numeric">Waste</th>
+              <th scope="col" class="numeric">Transfer in</th>
+              <th scope="col" class="numeric">Transfer out</th>
+              <th scope="col" class="numeric">Count variance</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (product of productPager.slice(report.products); track product.productId) {
+              <tr>
+                <td>
+                  <a [routerLink]="['/products', product.productId]">{{ product.name }}</a> ·
+                  {{ product.unit }}
+                </td>
+                <td class="numeric">{{ product.addedQuantity | number: '1.0-3' }}</td>
+                <td class="numeric">{{ product.removedQuantity | number: '1.0-3' }}</td>
+                <td class="numeric">{{ product.consumedQuantity | number: '1.0-3' }}</td>
+                <td class="numeric">{{ product.wasteQuantity | number: '1.0-3' }}</td>
+                <td class="numeric">{{ product.transferInQuantity | number: '1.0-3' }}</td>
+                <td class="numeric">{{ product.transferOutQuantity | number: '1.0-3' }}</td>
+                <td class="numeric">{{ signed(product.countVariance) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="mobile-list product-facts">
+        @for (product of productPager.slice(report.products); track product.productId) {
+          <article>
+            <h3>
+              <a [routerLink]="['/products', product.productId]">{{ product.name }}</a> ·
+              {{ product.unit }}
+            </h3>
+            <dl>
+              <div>
+                <dt>Added</dt>
+                <dd>{{ product.addedQuantity | number: '1.0-3' }} {{ product.unit }}</dd>
+              </div>
+              <div>
+                <dt>Removed</dt>
+                <dd>{{ product.removedQuantity | number: '1.0-3' }} {{ product.unit }}</dd>
+              </div>
+              <div>
+                <dt>Sale consumption</dt>
+                <dd>{{ product.consumedQuantity | number: '1.0-3' }} {{ product.unit }}</dd>
+              </div>
+              <div>
+                <dt>Waste</dt>
+                <dd>{{ product.wasteQuantity | number: '1.0-3' }} {{ product.unit }}</dd>
+              </div>
+              <div>
+                <dt>Transfer in</dt>
+                <dd>{{ product.transferInQuantity | number: '1.0-3' }} {{ product.unit }}</dd>
+              </div>
+              <div>
+                <dt>Transfer out</dt>
+                <dd>{{ product.transferOutQuantity | number: '1.0-3' }} {{ product.unit }}</dd>
+              </div>
+              <div>
+                <dt>Count variance</dt>
+                <dd>{{ signed(product.countVariance) }} {{ product.unit }}</dd>
+              </div>
+            </dl>
+          </article>
+        }
+      </div>
+      <app-pagination label="Ingredient total pages" [total]="report.products.length" [page]="productPager.current(report.products.length)" [size]="productPager.size()" (pageChange)="productPager.page.set($event)" (sizeChange)="productPager.resize($event)" /><h3>Movement records</h3>
+      <div class="table-wrap desktop-table">
+        <table>
+          <caption>
+            Committed inventory movements
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Recorded</th>
+              <th scope="col">Ingredient</th>
+              <th scope="col">Location</th>
+              <th scope="col">Cause</th>
+              <th scope="col" class="numeric">Quantity</th>
+              <th scope="col">Reason / reference</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (movement of pager.slice(report.items); track movement.id) {
+              <tr>
+                <td>{{ movement.createdAt | date: 'medium' }}</td>
+                <td>
+                  <a [routerLink]="['/products', movement.productId]">{{
+                    productFact(movement.productId)?.name || 'Unavailable ingredient'
+                  }}</a>
+                </td>
+                <td>{{ locationName(movement.locationId) }}</td>
+                <td>{{ causeName(movement.cause) }}</td>
+                <td class="numeric">{{ movementQuantity(movement) }}</td>
+                <td>
+                  {{ movementReason(movement) }}<br />
+                  @if (movement.cause === 'MANUAL') {
+                    <span class="reference">{{ movementReference(movement) }}</span>
+                  } @else {
+                    <a class="reference" [routerLink]="['/operations', movement.operationId]">{{ movementReference(movement) }}</a>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="mobile-list report-records">
+        @for (movement of pager.slice(report.items); track movement.id) {
+          <article>
+            <h3>
+              <a [routerLink]="['/products', movement.productId]">{{
+                productFact(movement.productId)?.name || 'Unavailable ingredient'
+              }}</a>
+            </h3>
+            <p>
+              <strong>{{ movementQuantity(movement) }}</strong> · {{ causeName(movement.cause) }}
+            </p>
+            <p>
+              {{ movement.createdAt | date: 'medium' }} · {{ locationName(movement.locationId) }}
+            </p>
+            <p>{{ movementReason(movement) }}</p>
+            @if (movement.cause === 'MANUAL') {
+              <span class="reference">{{ movementReference(movement) }}</span>
+            } @else {
+              <a class="reference" [routerLink]="['/operations', movement.operationId]">{{ movementReference(movement) }}</a>
+            }
+          </article>
+        }
+      </div>
+    }
+  }
+  @if (moreError()) {
+    <p class="error" role="alert">Additional records could not be loaded. {{ moreError() | readable:locations() }}</p>
+  }
+  <app-pagination [total]="records().length" [page]="pager.current(records().length)" [size]="pager.size()" [hasMore]="!!nextCursor()" [busy]="loadingMore() || pager.busy()" (pageChange)="pageTo($event)" (sizeChange)="resizePage($event)" />
+}

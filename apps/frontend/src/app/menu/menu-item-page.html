@@ -1,0 +1,74 @@
+<div class="page-head">
+  <div><span class="eyebrow">Menu & recipe</span>
+    <h1>{{ id() ? (item()?.name ?? 'Menu item') : 'Create menu item' }}</h1><p class="muted">{{ id() ? 'Selling price and ingredient consumption per item.' : 'Connect a sellable menu item to its ingredients.' }}</p></div>
+  <a routerLink="/menu">Back to menu</a>
+</div>
+@if (loading()) {
+  <p role="status">Loading menu item…</p>
+} @else if (id() && !item() || !currency()) {
+  <p class="error" role="alert">{{ (error() || 'Menu configuration is unavailable.') | readable:products() }}</p><button type="button" (click)="load()">Retry</button>
+} @else {
+  @if (error()) { <p class="error" role="alert" tabindex="-1" id="menu-error">{{ error() | readable:products() }}</p> }
+  @if (refreshNeeded()) { <p><button type="button" class="secondary" [disabled]="submitting()" (click)="refreshCurrent()">Load latest saved revision for review</button></p> }
+  @if (success()) { <p class="success" role="status">{{ success() }}</p> }
+  @if (uncertain()) {
+    <section class="panel"><h2>Check saved outcome</h2><p>Keep this request unchanged until the original outcome is known.</p>
+      @if (id()) { <button type="button" [disabled]="submitting()" (click)="checkOutcome()">Check saved menu item</button> }
+      @else { <p><a routerLink="/menu">Check the menu list</a> for the item before starting another creation attempt.</p> }
+    </section>
+  }
+  @if (item(); as current) {
+    <section class="menu-summary">
+      <p>{{ current.category }} · <strong>{{ money(current.priceMinor, current.currency) }}</strong> · {{ current.archivedAt ? 'Archived' : 'Active' }}</p>
+      @if (current.archivedAt) { <p class="muted">Archived {{ current.archivedAt | date: 'medium' }}. Existing receipts and recipe history remain available.</p> }
+      @else if (!editing()) { <button type="button" [disabled]="submitting() || !!uncertain()" (click)="startEditing()">Edit and publish new revision</button> }
+    </section>
+  }
+  @if (editing()) {
+    @if (catalogError()) { <p class="error" role="alert">Ingredient catalog could not be loaded. {{ catalogError() | readable:products() }}</p><button type="button" class="secondary" [disabled]="catalogLoading()" (click)="loadIngredients()">Retry ingredient catalog</button> }
+    @if (!catalogError() && !catalogLoading() && !activeProducts().length) { <p role="status">Create an active ingredient product before publishing a recipe.</p><p><a routerLink="/products/new">Create ingredient product</a></p> }
+    <form class="panel" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="field"><label for="menu-name">Menu item name</label><input id="menu-name" formControlName="name" maxlength="100" required [attr.aria-invalid]="validation() && nameInvalid() ? 'true' : null" aria-describedby="menu-name-help" /><small id="menu-name-help">Required, up to 100 characters.</small>@if (validation() && nameInvalid()) { <small class="error">Enter a name of 1–100 characters.</small> }</div>
+      <div class="grid-2">
+        <div class="field"><label for="menu-item-category">Category</label><input id="menu-item-category" formControlName="category" maxlength="80" required [attr.aria-invalid]="validation() && categoryInvalid() ? 'true' : null" />@if (validation() && categoryInvalid()) { <small class="error">Enter a category of 1–80 characters.</small> }</div>
+        <div class="field"><label for="menu-price">Selling price ({{ currency() }})</label><input id="menu-price" type="text" inputmode="decimal" maxlength="20" formControlName="price" required [attr.aria-invalid]="validation() && priceInvalid() ? 'true' : null" aria-describedby="menu-price-help" /><small id="menu-price-help">Use up to two decimals, for example 4.00.</small>@if (validation() && priceInvalid()) { <small class="error">Enter a nonnegative price with at most two decimals.</small> }</div>
+      </div>
+      <h2 class="document-lines-title">Recipe per menu item</h2><p class="muted">Enter quantities in each ingredient's fixed base unit. For a latte: 0.018 kg coffee and 0.200 L milk.</p>
+      <div formArrayName="ingredients" class="recipe-lines">
+        @for (line of lines.controls; track line; let index = $index) {
+          <fieldset class="recipe-line" [formGroupName]="index">
+            <legend>Ingredient {{ index + 1 }}</legend>
+            <div class="field"><label [for]="'ingredient-' + index">Ingredient product</label><select [id]="'ingredient-' + index" formControlName="productId" required [attr.aria-invalid]="(validation() || !!line.controls.productId.value) && ingredientInvalid(index) ? 'true' : null"><option value="">Choose ingredient</option>@if (line.controls.productId.value && unavailable(line.controls.productId.value)) { <option [value]="line.controls.productId.value" disabled>{{ product(line.controls.productId.value)?.name || 'Unavailable ingredient' }} (unavailable)</option> }@for (product of activeProducts(); track product.id) { <option [value]="product.id">{{ product.name }} · {{ product.unit }}</option> }</select>@if ((validation() || !!line.controls.productId.value) && ingredientInvalid(index)) { <small class="error">Choose an active ingredient. Missing or archived products cannot be published.</small> }</div>
+            <div class="field"><label [for]="'ingredient-quantity-' + index">Quantity per item{{ unit(line.controls.productId.value) ? ' (' + unit(line.controls.productId.value) + ')' : '' }}</label><input [id]="'ingredient-quantity-' + index" type="number" formControlName="quantity" min="0.001" max="1000000000" step="0.001" required [attr.aria-invalid]="validation() && quantityInvalid(index) ? 'true' : null" />@if (validation() && quantityInvalid(index)) { <small class="error">Use a positive quantity with up to three decimals.</small> }</div>
+            <button class="secondary remove-line" type="button" [attr.aria-label]="'Remove ingredient ' + (index + 1)" [disabled]="lines.length <= 1 || submitting() || !!uncertain()" (click)="removeLine(index)">Remove ingredient</button>
+          </fieldset>
+        }
+      </div>
+      <p><button type="button" class="secondary" [disabled]="lines.length >= 100 || submitting() || !!uncertain()" (click)="addLine()">Add ingredient</button></p>
+      @if (validation()) { <p class="error" role="alert" tabindex="-1" id="menu-validation">{{ validation() }}</p> }
+      @if (id()) { <p class="muted">Publishing creates a new revision. Earlier recipes and sale snapshots stay unchanged.</p> }
+      <div class="menu-actions form-footer"><button type="submit" [disabled]="submitting() || !!uncertain() || refreshNeeded() || catalogLoading() || !!catalogError() || !activeProducts().length">{{ submitting() ? 'Publishing…' : (id() ? 'Publish new revision' : 'Create and publish menu item') }}</button>@if (id()) { <button type="button" class="secondary" [disabled]="submitting() || !!uncertain()" (click)="cancelEditing()">Cancel editing</button> }</div>
+    </form>
+  } @else if (item(); as current) {
+    <section class="recipe-history">
+      <div class="field revision-picker"><label for="recipe-revision">Recipe revision</label><select id="recipe-revision" [value]="selectedRevision()" [disabled]="revisionLoading()" (change)="showRevision($any($event.target).value)">@for (revision of revisionNumbers(); track revision) { <option [value]="revision" [selected]="revision===selectedRevision()">Revision {{ revision }}{{ revision === current.recipeRevision ? ' (current)' : '' }}</option> }</select></div>
+      @if(current.recipeRevision>100){<div class="inventory-filters"><div class="field"><label for="older-recipe-revision">Find any recipe revision</label><input id="older-recipe-revision" type="number" inputmode="numeric" min="1" step="1" [max]="current.recipeRevision" [formControl]="revisionLookup" aria-describedby="older-revision-help"><small id="older-revision-help">Enter a revision from 1 to {{current.recipeRevision}}. The list shows the latest 100.</small></div><button type="button" class="secondary" [disabled]="revisionLoading() || revisionLookup.invalid" (click)="showRevision(revisionLookup.value)">Load revision</button></div>}
+      @if (revisionLoading()) { <p role="status">Loading recipe revision…</p> }
+      @else if (revisionError()) { <p class="error" role="alert" id="recipe-revision-error" tabindex="-1">{{ revisionError() | readable:products() }}</p><button type="button" class="secondary" (click)="showRevision('' + selectedRevision())">Retry revision</button> }
+      @else {
+        @let displayed = historical() || current;
+        <h2 id="recipe-revision-detail" tabindex="-1">Ingredient consumption for one {{ displayed.name }}</h2><p class="muted">Revision {{ displayed.recipeRevision }} · {{ money(displayed.priceMinor, displayed.currency) }} · Published {{ displayed.updatedAt | date: 'medium' }}</p>
+        <div class="desktop-table"><table><thead><tr><th scope="col">Ingredient</th><th scope="col" class="numeric">Quantity per item</th></tr></thead><tbody>@for (ingredient of displayed.ingredients; track ingredient.productId) { <tr><td>{{ ingredient.name }}</td><td class="numeric">{{ ingredient.quantity }} {{ ingredient.unit }}</td></tr> }</tbody></table></div>
+        <dl class="mobile-list ingredient-summary">@for (ingredient of displayed.ingredients; track ingredient.productId) { <div><dt>{{ ingredient.name }}</dt><dd>{{ ingredient.quantity }} {{ ingredient.unit }}</dd></div> }</dl>
+      }
+    </section>
+  }
+  @if (item(); as current) {
+    @if (!current.archivedAt && !editing()) {
+      <section class="archive-section"><h2>Archive menu item</h2><p class="muted">Remove this item from new POS sales. Existing receipts and recipe revisions remain available.</p>
+        @if (confirmingArchive()) { <p role="status">Archive {{ current.name }}?</p><div class="menu-actions"><button type="button" class="danger" [disabled]="submitting() || !!uncertain()" (click)="archive()">Confirm archive</button><button type="button" class="secondary" [disabled]="submitting() || !!uncertain()" (click)="confirmingArchive.set(false)">Keep active</button></div> }
+        @else { <button type="button" class="secondary" [disabled]="submitting() || !!uncertain()" (click)="confirmingArchive.set(true)">Archive menu item</button> }
+      </section>
+    }
+  }
+}

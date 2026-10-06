@@ -1,0 +1,14 @@
+<app-section-nav area="inventory" />
+<div class="page-head"><div><span class="eyebrow">Storage</span>
+    <h1>Storage locations</h1><p class="muted">Track ingredients in the store, kitchen, bar or freezer.</p></div><a routerLink="/inventory">Inventory</a></div>
+@if (error()) { <p class="error" role="alert">{{ error() | readable:locations() }}</p> }
+@if (message()) { <p class="success" role="status">{{ message() }}</p> }
+<form class="location-form" [formGroup]="form" (ngSubmit)="submit()" novalidate><div class="field"><label for="location-name">{{ editing() ? 'Rename location' : 'New location name' }}</label><input id="location-name" formControlName="name" maxlength="80" required /></div><button [disabled]="submitting()">{{ submitting() ? 'Saving…' : 'Save location' }}</button>@if (editing()) { <button type="button" class="secondary" (click)="cancel()">Cancel</button> }</form>
+@if (loading()) { <p role="status">Loading locations…</p> }
+@else if (!error() && locations().length === 0) { <p>No storage locations yet. Create one to receive stock.</p> }
+@else {
+  <ul class="location-list">@for (location of pager.slice(locations()); track location.id) { <li><div><strong>{{ location.name }}</strong><p><a [routerLink]="['/locations', location.id]">View stock</a></p></div><button type="button" class="secondary" (click)="edit(location)">Rename {{ location.name }}</button></li> }</ul>
+}
+@if (error()) { <button type="button" class="secondary" (click)="load()">Retry locations</button> }
+
+@if(!loading() && !error()){<app-pagination [total]="locations().length" [page]="pager.current(locations().length)" [size]="pager.size()" [hasMore]="false" [busy]="loading() || pager.busy()" (pageChange)="pager.page.set($event)" (sizeChange)="pager.resize($event)" />}

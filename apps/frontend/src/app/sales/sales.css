@@ -1,0 +1,62 @@
+:host { display: block; min-width: 0; }
+.pos-layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr); gap: 32px; align-items: start; }
+.menu-list { list-style: none; padding: 0; margin: 0; }
+.menu-list li { display: flex; gap: 20px; align-items: center; justify-content: space-between; padding: 20px 0; border-bottom: 1px solid var(--line); }
+.menu-list li > div { min-width: 0; }
+.menu-list li > button { flex-shrink: 0; }
+.menu-list strong { font-size: 16px; font-weight: 650; overflow-wrap: anywhere; }
+.menu-list small, .record-list small { display: block; color: var(--muted); margin-top: 5px; font-size: 12px; }
+#pos-cart { position: sticky; top: 24px; border-top: 3px solid var(--accent); }
+.cart-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.cart-heading h2 { margin: 0; }
+.cart-heading span { font-size: 12px; color: var(--muted); }
+.cart-heading + .muted { padding: 24px 0; }
+.cart-line { display: grid; grid-template-columns: minmax(0, 1fr) 80px auto; align-items: center; gap: 12px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.cart-line strong { font-size: 14px; overflow-wrap: anywhere; }
+.cart-line .field { margin: 0; }
+.cart-line .field label { font-size: 11px; }
+.cart-line button { padding: 8px 10px; min-height: 40px; font-size: 12px; }
+.cart-shortcut .button { width: 100%; justify-content: space-between; }
+.sale-total { font-size: 22px; font-weight: 700; margin: 20px 0; padding: 16px 0; border-top: 2px solid var(--ink); font-variant-numeric: tabular-nums; }
+.review { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 24px; }
+.reference { overflow-wrap: anywhere; }
+.sale-facts { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 24px; padding: 24px; background: white; border-top: 3px solid var(--accent); border-bottom: 1px solid var(--line); margin: 0 0 20px; }
+.sale-facts dt { font-size: 12px; color: var(--muted); }
+.sale-facts dd { margin: 8px 0 0; font-weight: 650; overflow-wrap: anywhere; }
+.line-mobile { padding: 20px 0; border-bottom: 1px solid var(--line); }
+.line-mobile p { margin: 8px 0; }
+.refund-line { display: grid; grid-template-columns: minmax(0, 1fr) 140px; gap: 20px; align-items: start; padding: 20px 0; border-bottom: 1px solid var(--line); }
+.refund-line .field { margin: 0; }
+.refund-line p { font-size: 13px; margin: 8px 0 0; }
+.correction-document .check-field { margin: 16px 0; }
+.receipt { max-width: 650px; margin: 0 auto; padding: 32px; border-top: 3px solid var(--ink); }
+.receipt-head { border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+.receipt-head h1 { font-size: 24px; }
+.receipt-head p { font-size: 13px; }
+.receipt-items { list-style: none; padding: 0; }
+.receipt-items li { display: flex; justify-content: space-between; gap: 20px; padding: 20px 0; border-bottom: 1px solid var(--line); }
+.receipt-items small { display: block; color: var(--muted); margin-top: 6px; }
+.receipt-items li > strong { white-space: nowrap; }
+.receipt-actions { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); }
+.numeric { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.new-sale { margin-top: 10px; }
+@media (max-width: 900px) { .pos-layout { grid-template-columns: minmax(0,1.1fr) minmax(300px,1fr); gap: 24px; } .cart-line { grid-template-columns: minmax(0,1fr) 80px; } .cart-line button { grid-column: 1/-1; justify-self: start; } }
+@media (max-width: 700px) {
+  .pos-layout { grid-template-columns: minmax(0,1fr); gap: 28px; }
+  #pos-cart { position: static; scroll-margin-top: 18px; }
+  .cart-line { grid-template-columns: minmax(0,1fr) 85px; }
+  .cart-line button { grid-column: 1/-1; justify-self: start; min-height: 44px; }
+  .refund-line { grid-template-columns: minmax(0,1fr); }
+  .sale-facts { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px 16px; padding: 20px; }
+  .menu-list li { gap: 12px; }
+  .menu-list li > button { font-size: 13px; padding: 9px 12px; }
+  .receipt { padding: 22px; }
+  .receipt-items li { gap: 12px; }
+  .receipt-items strong { font-size: 14px; }
+}
+@media print {
+  :host { display: block; }
+  .receipt { max-width: none; border: 0; box-shadow: none; padding: 0; color: black; }
+  .receipt-actions, .page-head, .error { display: none !important; }
+  .receipt-head, .receipt-items li { break-inside: avoid; }
+}
