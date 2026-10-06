@@ -584,6 +584,31 @@
       justify-content: space-between;
     }
 
+    /* Storage Locations Management */
+    .locations-layout {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      gap: 28px;
+      align-items: start;
+    }
+    .locations-card-form {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 24px;
+      position: sticky;
+      top: 24px;
+    }
+    .locations-card-form h3 { font-size: 16px; margin-bottom: 6px; }
+    .locations-card-form p.muted { font-size: 13px; margin-bottom: 18px; color: var(--muted); line-height: 1.45; }
+    .locations-card-form .field { margin-bottom: 16px; }
+    .locations-card-form .form-actions { display: flex; gap: 8px; margin-top: 18px; }
+    .locations-card-list { min-width: 0; }
+    @media (max-width: 860px) {
+      .locations-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+      .locations-card-form { position: static; }
+    }
+
     .hidden { display: none !important; }
   </style>
 </head>
@@ -599,8 +624,9 @@
       <button class="preview-tab active" onclick="switchView('dashboard')">1. Inventory Dashboard</button>
       <button class="preview-tab" onclick="switchView('product')">2. Product Detail & Actions</button>
       <button class="preview-tab" onclick="switchView('pos')">3. Counter POS & Recipes</button>
-      <button class="preview-tab" onclick="switchView('tokens')">4. Design Tokens & Badges</button>
-      <button class="preview-tab" onclick="switchView('gallery')">5. High-Res Mockups</button>
+      <button class="preview-tab" onclick="switchView('locations')">4. Storage Locations (Redesigned)</button>
+      <button class="preview-tab" onclick="switchView('tokens')">5. Design Tokens & Badges</button>
+      <button class="preview-tab" onclick="switchView('gallery')">6. High-Res Mockups</button>
     </div>
   </aside>
 
@@ -946,7 +972,107 @@
       </div>
     </section>
 
-    <!-- VIEW 4: DESIGN TOKENS & BADGES -->
+    <!-- VIEW 4: STORAGE LOCATIONS (REDESIGNED) -->
+    <section id="view-locations" class="hidden">
+      <div class="page-head">
+        <div>
+          <span class="eyebrow">Inventory Management</span>
+          <h1>Storage Locations</h1>
+          <p class="page-desc">Define and organize physical storage areas across the store, kitchen, bar, and cold storage.</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary" onclick="switchView('dashboard')">← Stock on Hand</button>
+        </div>
+      </div>
+
+      <div class="locations-layout">
+        <!-- Left: Dedicated Add / Edit Card -->
+        <div class="locations-card-form">
+          <h3 id="loc-form-title">Add Storage Location</h3>
+          <p class="muted" id="loc-form-desc">Create a designated zone for inventory receiving, batch stock counts, and POS line items.</p>
+
+          <form id="location-create-form" onsubmit="handleLocationSubmit(event)">
+            <input type="hidden" id="edit-loc-id" value="">
+            <div class="field">
+              <label for="loc-name-input">Location Name</label>
+              <input
+                id="loc-name-input"
+                type="text"
+                placeholder="e.g. Walk-in Cooler, Espresso Bar…"
+                maxlength="80"
+                autocomplete="off"
+                required
+              >
+              <small style="color: var(--muted); font-size: 12px; margin-top: 4px;">Identifies where ingredients are stocked and tracked.</small>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn" id="loc-submit-btn">Add Location</button>
+              <button type="button" class="btn btn-secondary hidden" id="loc-cancel-btn" onclick="cancelLocationEdit()">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Right: Configured Locations Table -->
+        <div class="locations-card-list">
+          <div class="section-heading" style="margin-top: 0;">
+            <h2 id="loc-list-heading">Configured Storage Areas</h2>
+            <span id="loc-count-badge">5 locations</span>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col" style="width: 48%;">Storage Location</th>
+                  <th scope="col" style="width: 34%;">Stock On Hand</th>
+                  <th scope="col" class="numeric" style="width: 18%;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="locations-tbody">
+                <tr id="row-loc-1">
+                  <td><strong>Main Store</strong><br><small style="color: var(--muted); font-size: 12px;">Primary receiving area</small></td>
+                  <td><a href="javascript:void(0)" onclick="switchView('dashboard')" style="color: var(--accent); font-weight: 600;">View 18 items →</a></td>
+                  <td class="numeric">
+                    <button class="btn btn-secondary" style="height: 32px; padding: 0 12px; font-size: 12.5px;" onclick="startEditLocation('loc-1', 'Main Store')">Rename</button>
+                  </td>
+                </tr>
+                <tr id="row-loc-2">
+                  <td><strong>Espresso Bar</strong><br><small style="color: var(--muted); font-size: 12px;">Front-of-house service station</small></td>
+                  <td><a href="javascript:void(0)" onclick="switchView('dashboard')" style="color: var(--accent); font-weight: 600;">View 12 items →</a></td>
+                  <td class="numeric">
+                    <button class="btn btn-secondary" style="height: 32px; padding: 0 12px; font-size: 12.5px;" onclick="startEditLocation('loc-2', 'Espresso Bar')">Rename</button>
+                  </td>
+                </tr>
+                <tr id="row-loc-3">
+                  <td><strong>Walk-in Cooler</strong><br><small style="color: var(--muted); font-size: 12px;">Temperature-controlled dairy & produce</small></td>
+                  <td><a href="javascript:void(0)" onclick="switchView('dashboard')" style="color: var(--accent); font-weight: 600;">View 9 items →</a></td>
+                  <td class="numeric">
+                    <button class="btn btn-secondary" style="height: 32px; padding: 0 12px; font-size: 12.5px;" onclick="startEditLocation('loc-3', 'Walk-in Cooler')">Rename</button>
+                  </td>
+                </tr>
+                <tr id="row-loc-4">
+                  <td><strong>Dry Pantry</strong><br><small style="color: var(--muted); font-size: 12px;">Dry goods, syrups & packaging</small></td>
+                  <td><a href="javascript:void(0)" onclick="switchView('dashboard')" style="color: var(--accent); font-weight: 600;">View 14 items →</a></td>
+                  <td class="numeric">
+                    <button class="btn btn-secondary" style="height: 32px; padding: 0 12px; font-size: 12.5px;" onclick="startEditLocation('loc-4', 'Dry Pantry')">Rename</button>
+                  </td>
+                </tr>
+                <tr id="row-loc-5">
+                  <td><strong>Freezer Unit 1</strong><br><small style="color: var(--muted); font-size: 12px;">Back-of-house deep freeze</small></td>
+                  <td><a href="javascript:void(0)" onclick="switchView('dashboard')" style="color: var(--accent); font-weight: 600;">View 6 items →</a></td>
+                  <td class="numeric">
+                    <button class="btn btn-secondary" style="height: 32px; padding: 0 12px; font-size: 12.5px;" onclick="startEditLocation('loc-5', 'Freezer Unit 1')">Rename</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 5: DESIGN TOKENS & BADGES -->
     <section id="view-tokens" class="hidden">
       <div class="page-head">
         <div>
@@ -1048,7 +1174,7 @@
 
   <script>
     function switchView(viewId) {
-      const views = ['dashboard', 'product', 'pos', 'tokens', 'gallery'];
+      const views = ['dashboard', 'product', 'pos', 'locations', 'tokens', 'gallery'];
       views.forEach(v => {
         const el = document.getElementById('view-' + v);
         if (el) el.classList.add('hidden');
@@ -1061,6 +1187,64 @@
         t.classList.toggle('active', views[i] === viewId);
       });
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Storage Locations interactive methods
+    let locationCount = 5;
+    function startEditLocation(id, name) {
+      document.getElementById('edit-loc-id').value = id;
+      document.getElementById('loc-name-input').value = name;
+      document.getElementById('loc-form-title').innerText = 'Edit Storage Area';
+      document.getElementById('loc-form-desc').innerText = 'Update the name of this location used across receiving, stock counts, and POS.';
+      document.getElementById('loc-submit-btn').innerText = 'Save Changes';
+      document.getElementById('loc-cancel-btn').classList.remove('hidden');
+      document.getElementById('loc-name-input').focus();
+    }
+
+    function cancelLocationEdit() {
+      document.getElementById('edit-loc-id').value = '';
+      document.getElementById('loc-name-input').value = '';
+      document.getElementById('loc-form-title').innerText = 'Add Storage Location';
+      document.getElementById('loc-form-desc').innerText = 'Create a designated zone for inventory receiving, batch stock counts, and POS line items.';
+      document.getElementById('loc-submit-btn').innerText = 'Add Location';
+      document.getElementById('loc-cancel-btn').classList.add('hidden');
+    }
+
+    function handleLocationSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById('loc-name-input');
+      const name = input.value.trim();
+      const editId = document.getElementById('edit-loc-id').value;
+      if (!name) return;
+
+      if (editId) {
+        // Update existing row
+        const row = document.getElementById('row-' + editId);
+        if (row) {
+          const strong = row.querySelector('strong');
+          if (strong) strong.innerText = name;
+          const renameBtn = row.querySelector('button');
+          if (renameBtn) renameBtn.setAttribute('onclick', `startEditLocation('${editId}', '${name.replace(/'/g, "\\'")}')`);
+        }
+        cancelLocationEdit();
+      } else {
+        // Add new row
+        locationCount++;
+        const newId = 'loc-' + Date.now();
+        const tbody = document.getElementById('locations-tbody');
+        const tr = document.createElement('tr');
+        tr.id = 'row-' + newId;
+        tr.innerHTML = `
+          <td><strong>${name}</strong><br><small style="color: var(--muted); font-size: 12px;">Storage area</small></td>
+          <td><a href="javascript:void(0)" onclick="switchView('dashboard')" style="color: var(--accent); font-weight: 600;">View 0 items →</a></td>
+          <td class="numeric">
+            <button class="btn btn-secondary" style="height: 32px; padding: 0 12px; font-size: 12.5px;" onclick="startEditLocation('${newId}', '${name.replace(/'/g, "\\'")}')">Rename</button>
+          </td>
+        `;
+        tbody.prepend(tr);
+        document.getElementById('loc-count-badge').innerText = locationCount + ' locations';
+        cancelLocationEdit();
+      }
     }
 
     let currentStock = 40.000;

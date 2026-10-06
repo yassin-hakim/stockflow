@@ -27,10 +27,43 @@
   </section>
   @if (total()?.locations; as balances) {
     <section class="history-section" aria-label="Stock by location">
-      <h2>Stock by location</h2>
-      <ul class="record-list">@for(balance of locationPager.slice(balances);track balance.locationId){
-        <li><strong>{{balance.name}}</strong><span>{{balance.quantity}} {{stock.product.unit}} · {{balance.status}}</span></li>
-      }</ul>
+      <div class="list-heading">
+        <h2>Stock by location</h2>
+        <span>{{ balances.length }} {{ balances.length === 1 ? 'location' : 'locations' }}</span>
+      </div>
+      <div class="panel table-wrap desktop-table">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col" style="width: 50%;">Storage location</th>
+              <th scope="col" class="numeric" style="width: 25%;">Balance</th>
+              <th scope="col" class="numeric" style="width: 25%;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for(balance of locationPager.slice(balances); track balance.locationId){
+              <tr>
+                <td><strong>{{ balance.name }}</strong></td>
+                <td class="numeric">{{ balance.quantity }} {{ stock.product.unit }}</td>
+                <td class="numeric"><span class="status" [class]="'status ' + balance.status">{{ balance.status }}</span></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="stack mobile-list">
+        @for(balance of locationPager.slice(balances); track balance.locationId){
+          <article class="panel" style="padding: 14px 18px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+              <strong>{{ balance.name }}</strong>
+              <div style="text-align: right;">
+                <span style="font-weight: 650; font-variant-numeric: tabular-nums;">{{ balance.quantity }} {{ stock.product.unit }}</span>
+                <span class="status" [class]="'status ' + balance.status" style="margin-left: 8px;">{{ balance.status }}</span>
+              </div>
+            </div>
+          </article>
+        }
+      </div>
       <app-pagination label="Location stock pages" [total]="balances.length" [page]="locationPager.current(balances.length)" [size]="locationPager.size()" (pageChange)="locationPager.page.set($event)" (sizeChange)="locationPager.resize($event)" />
     </section>
   }

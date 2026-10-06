@@ -112,6 +112,18 @@ legend { padding: 0; }
 .stock-actions form { padding: 24px; }
 .stock-action-note { color: var(--muted); font-size: 13px; }
 .history-section { border-top: 1px solid var(--line); padding-top: 24px; }
+/* Storage Locations Management */
+.locations-layout { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 28px; align-items: start; }
+.locations-card-form { position: sticky; top: 24px; }
+.locations-card-form h2 { font-size: 16px; margin-bottom: 6px; }
+.locations-card-form p.muted { font-size: 13px; margin-bottom: 18px; line-height: 1.45; }
+.locations-card-form .field { margin-bottom: 16px; }
+.locations-card-form .form-actions { display: flex; gap: 8px; margin-top: 18px; }
+.locations-card-list { min-width: 0; }
+@media (max-width: 860px) {
+  .locations-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .locations-card-form { position: static; }
+}
 .location-form { display: flex; gap: 12px; align-items: end; max-width: 760px; padding: 24px; background: white; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 32px; }
 .location-form .field { flex: 1; margin: 0; }
 .location-list { list-style: none; padding: 0; margin: 0; }

@@ -1,14 +1,145 @@
 <app-section-nav area="inventory" />
-<div class="page-head"><div><span class="eyebrow">Storage</span>
-    <h1>Storage locations</h1><p class="muted">Track ingredients in the store, kitchen, bar or freezer.</p></div><a routerLink="/inventory">Inventory</a></div>
-@if (error()) { <p class="error" role="alert">{{ error() | readable:locations() }}</p> }
-@if (message()) { <p class="success" role="status">{{ message() }}</p> }
-<form class="location-form" [formGroup]="form" (ngSubmit)="submit()" novalidate><div class="field"><label for="location-name">{{ editing() ? 'Rename location' : 'New location name' }}</label><input id="location-name" formControlName="name" maxlength="80" required /></div><button [disabled]="submitting()">{{ submitting() ? 'Saving…' : 'Save location' }}</button>@if (editing()) { <button type="button" class="secondary" (click)="cancel()">Cancel</button> }</form>
-@if (loading()) { <p role="status">Loading locations…</p> }
-@else if (!error() && locations().length === 0) { <p>No storage locations yet. Create one to receive stock.</p> }
-@else {
-  <ul class="location-list">@for (location of pager.slice(locations()); track location.id) { <li><div><strong>{{ location.name }}</strong><p><a [routerLink]="['/locations', location.id]">View stock</a></p></div><button type="button" class="secondary" (click)="edit(location)">Rename {{ location.name }}</button></li> }</ul>
-}
-@if (error()) { <button type="button" class="secondary" (click)="load()">Retry locations</button> }
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Storage</span>
+    <h1>Storage locations</h1>
+    <p class="muted">Track ingredients in the store, kitchen, bar or freezer.</p>
+  </div>
+  <div class="action-links">
+    <a class="button secondary" routerLink="/inventory">← Stock on hand</a>
+  </div>
+</div>
 
-@if(!loading() && !error()){<app-pagination [total]="locations().length" [page]="pager.current(locations().length)" [size]="pager.size()" [hasMore]="false" [busy]="loading() || pager.busy()" (pageChange)="pager.page.set($event)" (sizeChange)="pager.resize($event)" />}
+@if (error()) {
+  <p class="error" role="alert">{{ error() | readable:locations() }}</p>
+}
+@if (message()) {
+  <p class="success" role="status">{{ message() }}</p>
+}
+
+<div class="locations-layout">
+  <!-- Left Column: Add / Edit Storage Location Card -->
+  <section class="panel locations-card-form" aria-labelledby="form-heading">
+    <h2 id="form-heading">{{ editing() ? 'Edit storage area' : 'Add storage location' }}</h2>
+    <p class="muted">
+      {{ editing() ? 'Update the display name of this storage area.' : 'Create a designated area for stock (e.g. Walk-in Cooler, Espresso Bar, Dry Pantry).' }}
+    </p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="field">
+        <label for="location-name">Location name</label>
+        <input
+          id="location-name"
+          formControlName="name"
+          placeholder="e.g. Walk-in Cooler"
+          maxlength="80"
+          autocomplete="off"
+          required
+        />
+        <small>Identifies where ingredients are stored and counted.</small>
+      </div>
+
+      <div class="form-actions">
+        <button [disabled]="submitting()">
+          {{ submitting() ? 'Saving…' : (editing() ? 'Save changes' : 'Add location') }}
+        </button>
+        @if (editing()) {
+          <button type="button" class="secondary" (click)="cancel()">Cancel</button>
+        }
+      </div>
+    </form>
+  </section>
+
+  <!-- Right Column: Configured Locations List -->
+  <section class="locations-card-list" aria-labelledby="list-heading">
+    @if (loading()) {
+      <div class="panel">
+        <p role="status" style="margin-bottom: 0;">Loading locations…</p>
+      </div>
+    } @else if (!error() && locations().length === 0) {
+      <div class="panel">
+        <h2>No storage locations yet</h2>
+        <p class="muted" style="margin-bottom: 0;">Create a location on the left to start organizing ingredients.</p>
+      </div>
+    } @else {
+      <div class="list-heading" style="margin-top: 0;">
+        <h2 id="list-heading">Configured storage areas</h2>
+        <span>{{ locations().length }} {{ locations().length === 1 ? 'location' : 'locations' }}</span>
+      </div>
+
+      <div class="panel table-wrap desktop-table">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col" style="width: 50%;">Storage location</th>
+              <th scope="col" style="width: 32%;">Inventory</th>
+              <th scope="col" class="numeric" style="width: 18%;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (location of pager.slice(locations()); track location.id) {
+              <tr>
+                <td>
+                  <strong>{{ location.name }}</strong>
+                </td>
+                <td>
+                  <a [routerLink]="['/locations', location.id]">View stock on hand →</a>
+                </td>
+                <td class="numeric">
+                  <button
+                    type="button"
+                    class="secondary"
+                    (click)="edit(location)"
+                    [attr.aria-label]="'Rename ' + location.name"
+                  >
+                    Rename
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="stack mobile-list">
+        @for (location of pager.slice(locations()); track location.id) {
+          <article class="panel" style="padding: 16px 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+              <div>
+                <strong style="font-size: 15px;">{{ location.name }}</strong>
+                <p style="margin: 6px 0 0;"><a [routerLink]="['/locations', location.id]">View stock on hand →</a></p>
+              </div>
+              <button
+                type="button"
+                class="secondary"
+                (click)="edit(location)"
+                [attr.aria-label]="'Rename ' + location.name"
+              >
+                Rename
+              </button>
+            </div>
+          </article>
+        }
+      </div>
+
+      @if (!loading() && !error()) {
+        <app-pagination
+          [total]="locations().length"
+          [page]="pager.current(locations().length)"
+          [size]="pager.size()"
+          [hasMore]="false"
+          [busy]="loading() || pager.busy()"
+          (pageChange)="pager.page.set($event)"
+          (sizeChange)="pager.resize($event)"
+        />
+      }
+    }
+
+    @if (error()) {
+      <p style="margin-top: 16px;">
+        <button type="button" class="secondary" (click)="load()">Retry locations</button>
+      </p>
+    }
+  </section>
+</div>
+

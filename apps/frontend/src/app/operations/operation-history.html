@@ -15,19 +15,29 @@
   <p role="status">Loading operations…</p>
 } @else if (!error()) {
   @if (selected(); as operation) {
-    <section class="panel">
-      <h2>{{ label(operation) }}</h2>
-      <p>
-        {{ kindName(operation.kind) }} · <strong>{{ operation.status }}</strong> ·
-        {{ operation.createdAt | date: 'medium' }}
-      </p>
-      <p>
-        {{ location(operation.locationId) }}
-        @if (operation.destinationLocationId) {
-          → {{ location(operation.destinationLocationId) }}
+    <section class="panel" style="margin-bottom: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px;">
+        <div>
+          <h2>{{ label(operation) }}</h2>
+          <p class="muted" style="margin-bottom: 0;">{{ kindName(operation.kind) }} · {{ operation.createdAt | date: 'medium' }}</p>
+        </div>
+        <span class="status" [class]="'status ' + (operation.status === 'COMMITTED' ? 'OK' : 'OUT')">{{ operation.status }}</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; padding: 16px; background: var(--canvas); border: 1px solid var(--line); border-radius: var(--radius-sm); margin-bottom: 16px;">
+        <div>
+          <small class="muted" style="display: block; text-transform: uppercase; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px;">Location</small>
+          <strong>{{ location(operation.locationId) }}</strong>
+          @if (operation.destinationLocationId) {
+            <span class="muted"> → </span><strong>{{ location(operation.destinationLocationId) }}</strong>
+          }
+        </div>
+        @if (reason(operation)) {
+          <div>
+            <small class="muted" style="display: block; text-transform: uppercase; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px;">Reason / Notes</small>
+            <span>{{ reason(operation) }}</span>
+          </div>
         }
-      </p>
-      <p>{{ reason(operation) }}</p>
+      </div>
       @if (operation.error) {
         <p class="error">{{ operation.error.message | readable: names() }}</p>
       }
