@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StockFlow — Modern Operational Redesign Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #173d39;
+      --accent: #12665b;
+      --accent-hover: #0e534a;
+      --muted: #5f716a;
+      --canvas: #f5f4ee;
+      --surface: #ffffff;
+      --soft: #eeeee7;
+      --line: #d9dfd6;
+      --control-line: #a8b5ac;
+      --danger: #a03b2c;
+      --focus-ring: #bf842d;
+      --radius: 8px;
+      --radius-sm: 6px;
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      background: var(--canvas);
+      font-size: 15px;
+      line-height: 1.5;
+      font-synthesis: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--canvas); color: var(--ink); min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* Top Preview Banner */
+    .preview-banner {
+      background: #112d2a;
+      color: #e5ece9;
+      padding: 10px 24px;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #1f4a44;
+    }
+    .preview-banner .badge {
+      background: #bf842d;
+      color: #172615;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-right: 8px;
+    }
+    .preview-switcher {
+      display: flex;
+      gap: 6px;
+      background: #0a1f1d;
+      padding: 3px;
+      border-radius: 6px;
+    }
+    .preview-tab {
+      background: transparent;
+      border: 0;
+      color: #9cb5ad;
+      padding: 5px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .preview-tab:hover { color: #fff; background: rgba(255,255,255,0.06); }
+    .preview-tab.active { background: #12665b; color: #fff; }
+
+    /* Main Shell Header */
+    .shell-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      padding: 0 32px;
+    }
+    .shell-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 64px;
+      border-bottom: 1px solid var(--soft);
+    }
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: -0.5px;
+    }
+    .brand-title {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--ink);
+    }
+    .brand-sub {
+      font-size: 12px;
+      color: var(--muted);
+      border-left: 1px solid var(--line);
+      padding-left: 12px;
+      margin-left: 4px;
+    }
+    .shell-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .env-tag {
+      background: #f1f0e8;
+      border: 1px solid var(--line);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    /* Primary Nav */
+    .main-nav {
+      display: flex;
+      gap: 28px;
+      margin-top: 0;
+    }
+    .nav-item {
+      padding: 14px 0 16px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .nav-item:hover { color: var(--ink); }
+    .nav-item.active {
+      color: var(--ink);
+      font-weight: 650;
+      border-bottom-color: var(--accent);
+    }
+
+    /* Container */
+    .app-main {
+      flex: 1;
+      max-width: 1280px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 32px 32px 64px;
+    }
+
+    /* Page Headings */
+    .page-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24px;
+      gap: 24px;
+    }
+    .eyebrow {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.1px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.6px;
+      color: var(--ink);
+      line-height: 1.25;
+      margin-bottom: 6px;
+    }
+    .page-desc {
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .header-actions {
+      display: flex;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 40px;
+      padding: 0 16px;
+      border-radius: var(--radius);
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: white;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      line-height: 1;
+      transition: background-color 0.12s, border-color 0.12s, box-shadow 0.12s;
+    }
+    .btn:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+    .btn:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--ink);
+      border-color: var(--control-line);
+    }
+    .btn-secondary:hover { background: var(--soft); border-color: var(--muted); }
+    .btn-danger {
+      background: var(--surface);
+      color: var(--danger);
+      border-color: #d3a69d;
+    }
+    .btn-danger:hover { background: #fbece8; border-color: var(--danger); }
+
+    /* Filter Bar */
+    .filter-bar {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: flex-end;
+      margin-bottom: 24px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1 1 180px;
+    }
+    .field-search { flex: 2 1 240px; }
+    .field label {
+      font-size: 12px;
+      font-weight: 650;
+      color: var(--ink);
+    }
+    .field input, .field select {
+      height: 38px;
+      padding: 0 12px;
+      border: 1px solid var(--control-line);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--ink);
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.12s;
+    }
+    .field input:focus, .field select:focus {
+      border-color: var(--accent);
+      outline: 3px solid var(--focus-ring);
+      outline-offset: 1px;
+    }
+    .check-field {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--ink);
+      height: 38px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .check-field input[type="checkbox"] {
+      width: 17px;
+      height: 17px;
+      accent-color: var(--accent);
+    }
+
+    /* Panels & Tables */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .panel-header h2 {
+      font-size: 15px;
+      font-weight: 650;
+      color: var(--ink);
+    }
+    .panel-meta {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 14px;
+    }
+    th {
+      background: #f8f8f2;
+      padding: 12px 20px;
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--line);
+    }
+    td {
+      padding: 15px 20px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tbody tr { transition: background-color 0.08s; }
+    tbody tr:hover { background-color: #fafbf8; }
+
+    .numeric {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum";
+    }
+    .qty-number {
+      font-weight: 700;
+      color: var(--ink);
+      font-size: 15px;
+    }
+    .qty-unit {
+      color: var(--muted);
+      font-weight: 400;
+      margin-left: 4px;
+      font-size: 13px;
+    }
+
+    /* Status Badges */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: 0.4px;
+      line-height: 1.4;
+      border: 1px solid transparent;
+    }
+    .status-badge.OK {
+      background: #e4eee1;
+      color: #315d3e;
+      border-color: #bdd4ba;
+    }
+    .status-badge.LOW {
+      background: #f8eccd;
+      color: #755417;
+      border-color: #dec999;
+    }
+    .status-badge.OUT {
+      background: #fae8e2;
+      color: #93382b;
+      border-color: #e6c0b5;
+    }
+
+    /* Signed Movements */
+    .movement-add {
+      color: #21553b;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .movement-remove {
+      color: #173d39;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Product Detail View */
+    .detail-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .metric-card .label {
+      font-size: 11.5px;
+      font-weight: 650;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .metric-card .val {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .metric-card .val span { font-size: 15px; font-weight: 500; color: var(--muted); }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+    .action-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .action-card h3 {
+      font-size: 16px;
+      font-weight: 650;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+    .action-card p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+    .action-card .btn { width: 100%; margin-top: 8px; }
+
+    /* POS Screen */
+    .pos-layout {
+      display: grid;
+      grid-template-columns: 1.8fr 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 16px;
+    }
+    .menu-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.12s;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 140px;
+    }
+    .menu-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(18, 102, 91, 0.08);
+    }
+    .menu-title { font-size: 15px; font-weight: 650; color: var(--ink); margin-bottom: 4px; }
+    .menu-price { font-size: 16px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+    .menu-recipe { font-size: 11.5px; color: var(--muted); line-height: 1.4; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
+
+    .order-ticket {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .order-ticket h3 { font-size: 16px; font-weight: 650; margin-bottom: 16px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+    .ticket-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--soft);
+      font-size: 14px;
+    }
+    .deduction-notice {
+      background: #fcf5e4;
+      border: 1px solid #dec999;
+      border-left: 3px solid var(--focus-ring);
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      margin: 16px 0;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .deduction-notice strong { color: #755417; }
+    .tender-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    /* Design Tokens Showcase */
+    .token-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .token-box {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .token-color {
+      width: 44px;
+      height: 44px;
+      border-radius: 6px;
+      border: 1px solid rgba(0,0,0,0.1);
+      flex-shrink: 0;
+    }
+
+    /* Mockups view */
+    .mockup-gallery {
+      display: grid;
+      gap: 32px;
+    }
+    .mockup-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .mockup-card img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .mockup-info {
+      padding: 20px;
+      border-top: 1px solid var(--line);
+    }
+    .mockup-info h3 { margin-bottom: 6px; }
+
+    /* Footer */
+    .shell-footer {
+      border-top: 1px solid var(--line);
+      background: var(--surface);
+      padding: 20px 32px;
+      font-size: 13px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Preview Bar for reviewing different screens -->
+  <aside class="preview-banner" aria-label="Redesign prototype controls">
+    <div>
+      <span class="badge">Live Redesign Concept</span>
+      <span>Strictly adhering to <code>instructions.md</code> · Calm culinary operations aesthetic</span>
+    </div>
+    <div class="preview-switcher">
+      <button class="preview-tab active" onclick="switchView('dashboard')">1. Inventory Dashboard</button>
+      <button class="preview-tab" onclick="switchView('product')">2. Product Detail & Actions</button>
+      <button class="preview-tab" onclick="switchView('pos')">3. Counter POS & Recipes</button>
+      <button class="preview-tab" onclick="switchView('tokens')">4. Design Tokens & Badges</button>
+      <button class="preview-tab" onclick="switchView('gallery')">5. High-Res Mockups</button>
+    </div>
+  </aside>
+
+  <!-- StockFlow Application Shell Header -->
+  <header class="shell-header">
+    <div class="shell-top">
+      <div class="brand-group">
+        <div class="brand-mark">SF</div>
+        <div>
+          <span class="brand-title">StockFlow</span>
+          <span class="brand-sub">Restaurant operations</span>
+        </div>
+      </div>
+      <div class="shell-actions">
+        <span>Storage: <strong>Main Store (rs0)</strong></span>
+        <span class="env-tag">BFF 3000 · Verified</span>
+      </div>
+    </div>
+    <nav class="main-nav" aria-label="Main navigation">
+      <a class="nav-item active" onclick="switchView('dashboard')">Inventory</a>
+      <a class="nav-item" onclick="switchView('product')">Operations</a>
+      <a class="nav-item" onclick="switchView('pos')">Menu & Recipes</a>
+      <a class="nav-item" onclick="switchView('pos')">Point of sale</a>
+      <a class="nav-item" onclick="switchView('dashboard')">Sales</a>
+      <a class="nav-item" onclick="switchView('tokens')">Reports</a>
+    </nav>
+  </header>
+
+  <!-- Main View Area -->
+  <main class="app-main">
+
+    <!-- VIEW 1: INVENTORY DASHBOARD -->
+    <section id="view-dashboard">
+      <div class="page-head">
+        <div>
+          <span class="eyebrow">Ingredients & Supplies</span>
+          <h1>Inventory</h1>
+          <p class="page-desc">Restaurant totals across all locations with 3-decimal precision</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary">Receive delivery</button>
+          <button class="btn">+ Create product</button>
+        </div>
+      </div>
+
+      <!-- Unified Filter Row -->
+      <div class="filter-bar">
+        <div class="field">
+          <label for="loc-select">Storage location</label>
+          <select id="loc-select">
+            <option>Restaurant total (all)</option>
+            <option>Main Kitchen Storeroom</option>
+            <option>Espresso Bar</option>
+            <option>Bakery Prep Station</option>
+          </select>
+        </div>
+        <div class="field field-search">
+          <label for="search-input">Search products or SKU</label>
+          <input type="search" id="search-input" placeholder="e.g. Arabica, Milk, COF-001..." onkeyup="filterTable()">
+        </div>
+        <div class="field">
+          <label for="cat-select">Category</label>
+          <select id="cat-select" onchange="filterTable()">
+            <option value="">All categories</option>
+            <option value="Coffee">Coffee</option>
+            <option value="Dairy">Dairy</option>
+            <option value="Bakery">Bakery</option>
+            <option value="Pantry">Pantry</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="status-select">Stock status</label>
+          <select id="status-select" onchange="filterTable()">
+            <option value="">All statuses</option>
+            <option value="OK">OK</option>
+            <option value="LOW">LOW</option>
+            <option value="OUT">OUT</option>
+          </select>
+        </div>
+        <label class="check-field">
+          <input type="checkbox"> Include archived
+        </label>
+      </div>
+
+      <!-- Tabular Inventory Data -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Stock on hand</h2>
+          <span class="panel-meta" id="row-count">5 products in this view</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col" style="width: 38%;">Product & SKU</th>
+              <th scope="col" style="width: 22%;">Category</th>
+              <th scope="col" class="numeric" style="width: 24%;">Stock on hand</th>
+              <th scope="col" style="width: 16%;">Status</th>
+            </tr>
+          </thead>
+          <tbody id="inventory-tbody">
+            <tr onclick="switchView('product')" style="cursor: pointer;">
+              <td>
+                <strong style="color: var(--accent); text-decoration: underline; text-underline-offset: 3px;">Arabica Coffee Beans</strong>
+                <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">SKU: COF-001 · Whole bean roast</div>
+              </td>
+              <td>Coffee</td>
+              <td class="numeric">
+                <span class="qty-number">40.000</span><span class="qty-unit">kg</span>
+              </td>
+              <td><span class="status-badge OK">OK</span></td>
+            </tr>
+            <tr>
+              <td>
+                <strong>Whole Milk</strong>
+                <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">SKU: MLK-102 · Fresh pasteurized</div>
+              </td>
+              <td>Dairy</td>
+              <td class="numeric">
+                <span class="qty-number">1.200</span><span class="qty-unit">L</span>
+              </td>
+              <td><span class="status-badge LOW">LOW</span></td>
+            </tr>
+            <tr>
+              <td>
+                <strong>Almond Croissant</strong>
+                <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">SKU: BAK-044 · Ready to serve</div>
+              </td>
+              <td>Bakery</td>
+              <td class="numeric">
+                <span class="qty-number">0.000</span><span class="qty-unit">pcs</span>
+              </td>
+              <td><span class="status-badge OUT">OUT</span></td>
+            </tr>
+            <tr>
+              <td>
+                <strong>Sourdough Loaf</strong>
+                <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">SKU: BAK-001 · Fresh daily bake</div>
+              </td>
+              <td>Bakery</td>
+              <td class="numeric">
+                <span class="qty-number">18.000</span><span class="qty-unit">pcs</span>
+              </td>
+              <td><span class="status-badge OK">OK</span></td>
+            </tr>
+            <tr>
+              <td>
+                <strong>Organic Extra Virgin Olive Oil</strong>
+                <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">SKU: OIL-009 · Cold pressed</div>
+              </td>
+              <td>Pantry</td>
+              <td class="numeric">
+                <span class="qty-number">4.500</span><span class="qty-unit">L</span>
+              </td>
+              <td><span class="status-badge OK">OK</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- VIEW 2: PRODUCT DETAIL & STOCK ACTIONS -->
+    <section id="view-product" class="hidden">
+      <div class="page-head">
+        <div>
+          <span class="eyebrow"><a href="javascript:switchView('dashboard')" style="color: inherit; text-decoration: none;">← Inventory</a> / Arabica Coffee Beans</span>
+          <h1>Arabica Coffee Beans</h1>
+          <p class="page-desc">Single-origin medium roast for espresso and filter brews</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary">Edit product details</button>
+        </div>
+      </div>
+
+      <!-- Core Metrics Bar -->
+      <div class="detail-metrics">
+        <div class="metric-card">
+          <div class="label">Current stock on hand</div>
+          <div class="val" id="product-stock-display">40.000 <span>kg</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="label">Status</div>
+          <div style="margin-top: 4px;"><span class="status-badge OK" id="product-badge">OK</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="label">Low-stock threshold</div>
+          <div class="val">5.000 <span>kg</span></div>
+        </div>
+        <div class="metric-card">
+          <div class="label">SKU / Category</div>
+          <div style="font-weight: 650; font-size: 16px; margin-top: 4px;">COF-001 <span style="color: var(--muted); font-size: 13px; font-weight: normal;">· Coffee</span></div>
+        </div>
+      </div>
+
+      <!-- Dual Operational Actions (Add vs Remove) -->
+      <div class="action-grid">
+        <!-- Add Stock Form -->
+        <div class="action-card">
+          <h3>Add Stock</h3>
+          <p>Record inbound deliveries, production, or positive physical adjustments.</p>
+          <div class="field" style="margin-bottom: 12px;">
+            <label for="add-qty">Quantity to add (kg)</label>
+            <input type="number" id="add-qty" placeholder="e.g. 10.000" step="0.001" min="0.001">
+          </div>
+          <div class="field" style="margin-bottom: 16px;">
+            <label for="add-reason">Reason (required)</label>
+            <select id="add-reason">
+              <option value="Delivery received">Delivery received</option>
+              <option value="Roaster return">Roaster return</option>
+              <option value="Count adjustment">Physical count surplus</option>
+            </select>
+          </div>
+          <button class="btn" onclick="executeStockAction('add')">Add stock</button>
+        </div>
+
+        <!-- Remove Stock Form -->
+        <div class="action-card" style="border-color: #e2c2ba;">
+          <h3 style="color: var(--danger);">Remove Stock</h3>
+          <p>Record prep usage, batch roasting, waste, or spoilage. Overdrafts are rejected.</p>
+          <div class="field" style="margin-bottom: 12px;">
+            <label for="rem-qty">Quantity to remove (kg)</label>
+            <input type="number" id="rem-qty" placeholder="e.g. 10.000" step="0.001" min="0.001">
+          </div>
+          <div class="field" style="margin-bottom: 16px;">
+            <label for="rem-reason">Reason (required)</label>
+            <select id="rem-reason">
+              <option value="Kitchen preparation">Kitchen preparation / Batch roasting</option>
+              <option value="Spillage / Waste">Spillage / Waste</option>
+              <option value="Count adjustment">Physical count deficit</option>
+            </select>
+          </div>
+          <button class="btn btn-danger" onclick="executeStockAction('remove')">Remove stock (guard active)</button>
+        </div>
+      </div>
+
+      <!-- Movement History Table -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Stock Movement History</h2>
+          <span class="panel-meta">Newest first · Published to NATS JetStream</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col" style="width: 25%;">Timestamp (UTC)</th>
+              <th scope="col" style="width: 25%;">Signed quantity</th>
+              <th scope="col" style="width: 30%;">Reason</th>
+              <th scope="col" style="width: 20%;">Audit status</th>
+            </tr>
+          </thead>
+          <tbody id="movements-tbody">
+            <tr>
+              <td>2026-10-06 14:03:00</td>
+              <td class="movement-remove">-10.000 kg</td>
+              <td>Batch roasting</td>
+              <td><span style="font-size: 11px; color: var(--muted); font-weight: 600;">✓ Audited</span></td>
+            </tr>
+            <tr>
+              <td>2026-10-06 14:02:45</td>
+              <td class="movement-add">+50.000 kg</td>
+              <td>Initial delivery received</td>
+              <td><span style="font-size: 11px; color: var(--muted); font-weight: 600;">✓ Audited</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- VIEW 3: POINT OF SALE (POS) & RECIPES -->
+    <section id="view-pos" class="hidden">
+      <div class="page-head">
+        <div>
+          <span class="eyebrow">Counter & Register</span>
+          <h1>Point of Sale & Recipes</h1>
+          <p class="page-desc">Every menu item automatically deducts underlying inventory upon checkout</p>
+        </div>
+        <div class="header-actions">
+          <span class="env-tag">Register #1 Active</span>
+        </div>
+      </div>
+
+      <div class="pos-layout">
+        <!-- Menu Catalog Grid -->
+        <div>
+          <h2 style="font-size: 16px; margin-bottom: 14px;">Menu Catalog</h2>
+          <div class="menu-grid">
+            <div class="menu-card" onclick="addToOrder('Single Origin Espresso', 3.50, 0.018, 0)">
+              <div>
+                <div class="menu-title">Espresso</div>
+                <div class="menu-price">$3.50</div>
+              </div>
+              <div class="menu-recipe">Recipe: <strong>0.018 kg</strong> Coffee</div>
+            </div>
+            <div class="menu-card" onclick="addToOrder('Oat Milk Latte', 5.00, 0.018, 0.200)">
+              <div>
+                <div class="menu-title">Oat Milk Latte</div>
+                <div class="menu-price">$5.00</div>
+              </div>
+              <div class="menu-recipe">Recipe: <strong>0.018 kg</strong> Coffee, <strong>0.200 L</strong> Oat Milk</div>
+            </div>
+            <div class="menu-card" onclick="addToOrder('Cold Brew (12oz)', 4.00, 0.030, 0)">
+              <div>
+                <div class="menu-title">Cold Brew</div>
+                <div class="menu-price">$4.00</div>
+              </div>
+              <div class="menu-recipe">Recipe: <strong>0.030 kg</strong> Coffee</div>
+            </div>
+            <div class="menu-card" onclick="addToOrder('Sourdough Toast with Butter', 4.50, 0, 0)">
+              <div>
+                <div class="menu-title">Sourdough Toast</div>
+                <div class="menu-price">$4.50</div>
+              </div>
+              <div class="menu-recipe">Recipe: <strong>1.000 pcs</strong> Bread</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Order Ticket & Stock Deduction -->
+        <div class="order-ticket">
+          <h3>Active Order</h3>
+          <div id="ticket-items">
+            <div class="ticket-item">
+              <span>1× Oat Milk Latte</span>
+              <strong class="numeric">$5.00</strong>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; margin-top: 16px; padding-top: 12px; border-top: 2px solid var(--line); font-size: 16px; font-weight: 700;">
+            <span>Total</span>
+            <span id="ticket-total" class="numeric">$5.00</span>
+          </div>
+
+          <div class="deduction-notice">
+            <strong>Stock Deduction Preview:</strong><br>
+            <span id="deduction-preview">0.018 kg Coffee · 0.200 L Oat Milk</span> will be decremented atomically on checkout.
+          </div>
+
+          <div class="tender-group">
+            <button class="btn btn-secondary" onclick="alert('Cash tender selected')">Cash</button>
+            <button class="btn btn-secondary" onclick="alert('Card tender selected')">Card</button>
+          </div>
+          <button class="btn" style="width: 100%;" onclick="checkoutOrder()">Complete Checkout</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 4: DESIGN TOKENS & BADGES -->
+    <section id="view-tokens" class="hidden">
+      <div class="page-head">
+        <div>
+          <span class="eyebrow">Design System Foundation</span>
+          <h1>Design Tokens & Standards</h1>
+          <p class="page-desc">Calm, tactile, Scandinavian culinary operations aesthetic (from instructions.md)</p>
+        </div>
+      </div>
+
+      <h2 style="font-size: 16px; margin: 24px 0 12px;">Core Color Palette</h2>
+      <div class="token-grid">
+        <div class="token-box">
+          <div class="token-color" style="background: #f5f4ee;"></div>
+          <div><strong>Canvas</strong><br><small style="color: var(--muted);">#F5F4EE · Warm off-white</small></div>
+        </div>
+        <div class="token-box">
+          <div class="token-color" style="background: #ffffff; border: 1px solid #d9dfd6;"></div>
+          <div><strong>Surface</strong><br><small style="color: var(--muted);">#FFFFFF · Pure white</small></div>
+        </div>
+        <div class="token-box">
+          <div class="token-color" style="background: #173d39;"></div>
+          <div><strong style="color: #173d39;">Primary Ink</strong><br><small style="color: var(--muted);">#173D39 · Deep spruce</small></div>
+        </div>
+        <div class="token-box">
+          <div class="token-color" style="background: #12665b;"></div>
+          <div><strong style="color: #12665b;">Accent / Action</strong><br><small style="color: var(--muted);">#12665B · Refined teal</small></div>
+        </div>
+        <div class="token-box">
+          <div class="token-color" style="background: #bf842d;"></div>
+          <div><strong style="color: #bf842d;">Focus Ring</strong><br><small style="color: var(--muted);">#BF842D · Amber gold</small></div>
+        </div>
+        <div class="token-box">
+          <div class="token-color" style="background: #a03b2c;"></div>
+          <div><strong style="color: #a03b2c;">Danger / Alert</strong><br><small style="color: var(--muted);">#A03B2C · Terracotta rust</small></div>
+        </div>
+      </div>
+
+      <h2 style="font-size: 16px; margin: 24px 0 12px;">Operational Status Badges</h2>
+      <div class="panel" style="padding: 24px; display: flex; gap: 32px; align-items: center;">
+        <div>
+          <span class="status-badge OK" style="font-size: 13px; padding: 6px 14px;">OK</span>
+          <p style="font-size: 12px; color: var(--muted); margin-top: 6px;">Adequately stocked<br><code>#E4EEE1 / #315D3E</code></p>
+        </div>
+        <div>
+          <span class="status-badge LOW" style="font-size: 13px; padding: 6px 14px;">LOW</span>
+          <p style="font-size: 12px; color: var(--muted); margin-top: 6px;">At or below threshold<br><code>#F8ECCD / #755417</code></p>
+        </div>
+        <div>
+          <span class="status-badge OUT" style="font-size: 13px; padding: 6px 14px;">OUT</span>
+          <p style="font-size: 12px; color: var(--muted); margin-top: 6px;">Zero stock balance<br><code>#FAE8E2 / #93382B</code></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 5: HIGH-RES MOCKUPS GALLERY -->
+    <section id="view-gallery" class="hidden">
+      <div class="page-head">
+        <div>
+          <span class="eyebrow">Rendered Visual Mockups</span>
+          <h1>High-Resolution Design Renders</h1>
+          <p class="page-desc">Complete full-scale visual layouts generated for the redesign</p>
+        </div>
+      </div>
+
+      <div class="mockup-gallery">
+        <div class="mockup-card">
+          <img src="file:///C:/Users/Yassin_Hakim/.gemini/antigravity-ide/brain/36ddf1c7-8196-4b40-9596-514a50a2b691/inventory_dashboard_mockup_1791305273035.jpg" alt="Inventory Dashboard Mockup">
+          <div class="mockup-info">
+            <h3>Inventory Dashboard — Operational View</h3>
+            <p style="font-size: 13.5px; color: var(--muted);">Tabular layout, 3-decimal tabular quantities, server status badges, inline filter bar, and prominent delivery receiving.</p>
+          </div>
+        </div>
+
+        <div class="mockup-card">
+          <img src="file:///C:/Users/Yassin_Hakim/.gemini/antigravity-ide/brain/36ddf1c7-8196-4b40-9596-514a50a2b691/product_detail_mockup_1791305295563.jpg" alt="Product Detail Mockup">
+          <div class="mockup-info">
+            <h3>Product Detail & Stock Actions — Arabica Coffee</h3>
+            <p style="font-size: 13.5px; color: var(--muted);">Side-by-side Add vs Remove action forms with required reasons, balance guard, and audit-verified movement history.</p>
+          </div>
+        </div>
+
+        <div class="mockup-card">
+          <img src="file:///C:/Users/Yassin_Hakim/.gemini/antigravity-ide/brain/36ddf1c7-8196-4b40-9596-514a50a2b691/pos_counter_mockup_1791305317535.jpg" alt="Point of Sale Mockup">
+          <div class="mockup-info">
+            <h3>Counter Point of Sale (POS) & Recipe Deduction</h3>
+            <p style="font-size: 13.5px; color: var(--muted);">Touch-friendly menu items with ingredient recipe indicators, active order ticket, and real-time stock deduction preview.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Shell Footer -->
+  <footer class="shell-footer">
+    <span>StockFlow · Modern Restaurant Operations</span>
+    <span>Store · Kitchen · Counter</span>
+  </footer>
+
+  <script>
+    function switchView(viewId) {
+      const views = ['dashboard', 'product', 'pos', 'tokens', 'gallery'];
+      views.forEach(v => {
+        const el = document.getElementById('view-' + v);
+        if (el) el.classList.add('hidden');
+      });
+      const target = document.getElementById('view-' + viewId);
+      if (target) target.classList.remove('hidden');
+
+      // Update tabs
+      document.querySelectorAll('.preview-tab').forEach((t, i) => {
+        t.classList.toggle('active', views[i] === viewId);
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    let currentStock = 40.000;
+    function executeStockAction(type) {
+      if (type === 'add') {
+        const val = parseFloat(document.getElementById('add-qty').value);
+        const reason = document.getElementById('add-reason').value;
+        if (!val || val <= 0) { alert('Please enter a valid positive quantity.'); return; }
+        currentStock += val;
+        addMovement('+' + val.toFixed(3) + ' kg', reason, 'movement-add');
+        document.getElementById('add-qty').value = '';
+      } else {
+        const val = parseFloat(document.getElementById('rem-qty').value);
+        const reason = document.getElementById('rem-reason').value;
+        if (!val || val <= 0) { alert('Please enter a valid positive quantity.'); return; }
+        if (val > currentStock) {
+          alert('Insufficient stock! Cannot remove ' + val.toFixed(3) + ' kg from current balance of ' + currentStock.toFixed(3) + ' kg.');
+          return;
+        }
+        currentStock -= val;
+        addMovement('-' + val.toFixed(3) + ' kg', reason, 'movement-remove');
+        document.getElementById('rem-qty').value = '';
+      }
+      document.getElementById('product-stock-display').innerHTML = currentStock.toFixed(3) + ' <span>kg</span>';
+      const badge = document.getElementById('product-badge');
+      if (currentStock <= 0) {
+        badge.className = 'status-badge OUT'; badge.innerText = 'OUT';
+      } else if (currentStock <= 5) {
+        badge.className = 'status-badge LOW'; badge.innerText = 'LOW';
+      } else {
+        badge.className = 'status-badge OK'; badge.innerText = 'OK';
+      }
+    }
+
+    function addMovement(qtyText, reason, cls) {
+      const tbody = document.getElementById('movements-tbody');
+      const tr = document.createElement('tr');
+      const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
+      tr.innerHTML = `
+        <td>${now}</td>
+        <td class="${cls}">${qtyText}</td>
+        <td>${reason}</td>
+        <td><span style="font-size: 11px; color: var(--muted); font-weight: 600;">✓ Audited</span></td>
+      `;
+      tbody.prepend(tr);
+    }
+
+    let orderTotal = 5.00;
+    function addToOrder(name, price, coffee, milk) {
+      orderTotal += price;
+      document.getElementById('ticket-total').innerText = '$' + orderTotal.toFixed(2);
+      const list = document.getElementById('ticket-items');
+      const item = document.createElement('div');
+      item.className = 'ticket-item';
+      item.innerHTML = `<span>1× ${name}</span><strong class="numeric">$${price.toFixed(2)}</strong>`;
+      list.appendChild(item);
+    }
+
+    function checkoutOrder() {
+      alert('Order completed ($' + orderTotal.toFixed(2) + '). Ingredients decremented from stock atomically!');
+      document.getElementById('ticket-items').innerHTML = '';
+      orderTotal = 0;
+      document.getElementById('ticket-total').innerText = '$0.00';
+    }
+
+    function filterTable() {
+      const q = (document.getElementById('search-input').value || '').toLowerCase();
+      const cat = document.getElementById('cat-select').value;
+      const status = document.getElementById('status-select').value;
+      const rows = document.querySelectorAll('#inventory-tbody tr');
+      let visible = 0;
+      rows.forEach(r => {
+        const text = r.innerText.toLowerCase();
+        const matchesQ = !q || text.includes(q);
+        const matchesCat = !cat || text.includes(cat.toLowerCase());
+        const matchesStatus = !status || text.includes(status);
+        if (matchesQ && matchesCat && matchesStatus) {
+          r.style.display = '';
+          visible++;
+        } else {
+          r.style.display = 'none';
+        }
+      });
+      document.getElementById('row-count').innerText = visible + ' products in this view';
+    }
+  </script>
+</body>
+</html>

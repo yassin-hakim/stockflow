@@ -1,0 +1,84 @@
+<header class="page-head">
+  <div>
+    <span class="eyebrow">Sales register</span>
+    <h1>Sales</h1>
+    <p class="muted">Recorded orders, pending checkout and correction history.</p>
+  </div>
+  <a class="button" routerLink="/pos">New sale</a>
+</header>
+<form class="inventory-filters" [formGroup]="form" (ngSubmit)="load()">
+  <div class="field">
+    <label for="sale-search">Find receipt or sale reference</label
+    ><input id="sale-search" type="search" formControlName="search" maxlength="100" />
+  </div>
+  <div class="field">
+    <label for="sale-state">Sale state</label
+    ><select id="sale-state" formControlName="status">
+      <option value="">All states</option>
+      <option value="COMPLETED">Completed</option>
+      <option value="CHECKOUT_PENDING">Checkout pending</option>
+      <option value="DRAFT">Draft</option>
+      <option value="REJECTED">Rejected</option>
+      <option value="CANCELLED">Cancelled</option>
+    </select>
+  </div>
+  <button [disabled]="loading()">Apply filters</button>
+</form>
+@if (error()) {
+  <p class="error" role="alert">{{ error() | readable }}</p>
+  <button class="secondary" (click)="load()">Retry sales</button>
+} @else if (loading() && !rows().length) {
+  <p role="status">Loading sales…</p>
+} @else if (!rows().length) {
+  <section class="panel">
+    <h2>No matching sales</h2>
+    <p>Complete a sale from POS or change the filters.</p>
+    <a routerLink="/pos">Open point of sale</a>
+  </section>
+} @else {
+  <div class="table-wrap desktop-table">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Receipt / sale</th>
+          <th scope="col">Created</th>
+          <th scope="col">State</th>
+          <th scope="col" class="numeric">Recorded total</th>
+          <th scope="col">Tender</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (sale of pager.slice(rows()); track sale.id) {
+          <tr>
+            <td>
+              <a class="reference" [routerLink]="['/sales', sale.id]">{{
+                label(sale)
+              }}</a>
+            </td>
+            <td>{{ sale.createdAt | date: 'medium' }}</td>
+            <td>{{ sale.status.replaceAll('_', ' ') }}</td>
+            <td class="numeric">{{ sale.totalMinor / 100 | currency: sale.currency }}</td>
+            <td>{{ sale.tender ?? 'Not recorded' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <div class="mobile-list">
+    @for (sale of pager.slice(rows()); track sale.id) {
+      <article class="line-mobile">
+        <a class="reference" [routerLink]="['/sales', sale.id]">{{
+          label(sale)
+        }}</a>
+        <p>
+          {{ sale.status.replaceAll('_', ' ') }} ·
+          {{ sale.totalMinor / 100 | currency: sale.currency }}
+        </p>
+        <p class="muted">
+          {{ sale.createdAt | date: 'medium' }} · {{ sale.tender ?? 'Not recorded' }}
+        </p>
+      </article>
+    }
+  </div>
+  <app-pagination [total]="rows().length" [page]="pager.current(rows().length)" [size]="pager.size()" [hasMore]="!!cursor()" [busy]="loading() || pager.busy()" (pageChange)="pageTo($event)" (sizeChange)="resizePage($event)" />
+}

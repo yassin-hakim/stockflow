@@ -1,4 +1,6 @@
-# Fresh-clone review verification — 2026-10-05
+# Historical fresh-clone baseline verification — 2026-10-05
+
+This report is preserved historical evidence for the original five-process stock app. It predates Sales, location migration, recipes, POS and corrections. It does not prove the complete-app expansion is freshly cloned, installed or accepted. Current expansion proof is recorded separately in [expansion verification](../implementation/expansion/verification.md), with its own revision, fixture and command evidence.
 
 Verification started from a new clone of public `yassin-hakim/stockflow` at `f997cdc2f1d3f544f78fe2fdf4a01477ffda95ba`, without copying dependencies, environment files or application edits from the working checkout. The setup fixes published with this report were applied and exercised in that clone.
 

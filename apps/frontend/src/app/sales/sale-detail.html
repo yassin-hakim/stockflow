@@ -1,0 +1,119 @@
+<header class="page-head">
+  <div>
+    <span class="eyebrow">Sales register</span>
+    <h1>Sale detail</h1>
+    <a routerLink="/sales">Back to sales</a>
+  </div>
+  @if (sale()?.status === 'COMPLETED') {
+    <div class="action-links">
+      <a class="button" [routerLink]="['/sales', sale()!.id, 'receipt']">Open receipt</a
+      ><a class="button secondary" [routerLink]="['/sales', sale()!.id, 'refunds', 'new']"
+        >Record refund</a
+      >
+    </div>
+  }
+</header>
+@if (error()) {
+  <p class="error" role="alert">{{ error() | readable:ingredientNames():locations() }}</p>
+  <button class="secondary" (click)="load()">Retry sale</button>
+}
+@if (loading()) {
+  <p role="status">Loading sale…</p>
+} @else if (sale(); as order) {
+  @if (order.status === 'CHECKOUT_PENDING') {
+    <section class="pending-region" role="status">
+      <h2>Checkout is pending</h2>
+      <p>
+        Ingredients may already be committed. Sales will resolve this checkout using its original
+        identity.
+      </p>
+      <button type="button" (click)="load()">Check status</button>
+    </section>
+  }
+  @if (order.error) {
+    <p class="error" role="alert">{{ order.error.message | readable:ingredientNames():locations() }}</p>
+  }
+  <dl class="sale-facts">
+    <div>
+      <dt>State</dt>
+      <dd>{{ order.status.replaceAll('_', ' ') }}</dd>
+    </div>
+    <div>
+      <dt>Consumption location</dt>
+      <dd>{{ location() }}</dd>
+    </div>
+    <div>
+      <dt>Recorded total</dt>
+      <dd>{{ order.totalMinor / 100 | currency: order.currency }}</dd>
+    </div>
+    <div>
+      <dt>Tender</dt>
+      <dd>{{ order.tender ?? 'Not recorded' }}</dd>
+    </div>
+  </dl>
+  <p class="muted reference">
+    {{ label(order) }} · {{ order.createdAt | date: 'medium' }}
+  </p>
+  <section>
+    <h2>Recorded items and recipe</h2>
+    <ul class="record-list">
+      @for (line of order.lines; track line.id) {
+        <li>
+          <strong>{{ line.quantity }} × {{ line.name }}</strong
+          ><span>{{ line.totalMinor / 100 | currency: order.currency }}</span
+          ><small
+            >{{ line.priceMinor / 100 | currency: order.currency }} each · recipe revision
+            {{ line.recipeRevision }}</small
+          >
+          <p class="muted">
+            Per item:
+            @for (ingredient of line.ingredients; track ingredient.productId) {
+              <span
+                >{{ ingredient.quantity | number: '1.0-3' }} {{ ingredient.unit }}
+                {{ ingredient.name }}{{ $last ? '' : '; ' }}</span
+              >
+            }
+          </p>
+        </li>
+      }
+    </ul>
+    @if (order.operationId) {
+      <a [routerLink]="['/operations', order.operationId]">Inspect ingredient consumption</a>
+    }
+  </section>
+  @if (order.status === 'DRAFT' || order.status === 'REJECTED') {
+    <div class="action-links">
+      <button class="secondary" type="button" [disabled]="busy()" (click)="cancel()">
+        Cancel uncompleted sale
+      </button>
+    </div>
+  }
+  <section class="review">
+    <h2>Refunds</h2>
+    <app-pagination label="Refund pages" [total]="(order.refunds??[]).length" [page]="refundPager.current((order.refunds??[]).length)" [size]="refundPager.size()" (pageChange)="refundPager.page.set($event)" (sizeChange)="refundPager.resize($event)" />
+    @for (refund of refundPager.slice(order.refunds ?? []); track refund.id) {
+      <article class="line-mobile">
+        <strong
+          >{{ refund.amountMinor / 100 | currency: refund.currency }} ·
+          {{ refund.status.replaceAll('_', ' ') }}</strong
+        >
+        <p>{{ refund.reason | readable:ingredientNames():locations() }}</p>
+        <p class="muted">
+          {{ refund.createdAt | date: 'medium' }} ·
+          {{ refund.restock ? 'Ingredient return requested' : 'No ingredient return' }}
+        </p>
+        @if (refund.error) {
+          <p class="error">{{ refund.error.message | readable:ingredientNames():locations() }}</p>
+        }
+        @if (refund.status === 'REFUND_PENDING') {
+          <a [routerLink]="['/sales', order.id, 'refunds', 'new']">Check pending correction</a>
+        }
+        @if (refund.operationId) {
+          <a [routerLink]="['/operations', refund.operationId]">Inspect stock return</a>
+        }
+      </article>
+    } @empty {
+      <p class="muted">No recorded refunds.</p>
+    }
+  </section>
+}

@@ -16,9 +16,12 @@ import type {
   PendingEvent,
 } from "../application/publish-pending-events";
 import type { InventoryItemState, StockCommand } from "../domain/stock";
+import { DEFAULT_LOCATION_ID } from '../domain/operations';
+import { assertInventorySchema } from './inventory-migration';
 
 interface ItemDoc extends InventoryItemState {
   _id: string;
+  locationId: string;
 }
 interface MovementDoc {
   _id: string;
@@ -31,6 +34,10 @@ interface MovementDoc {
   command: StockCommand;
   result: StockChangeResult;
   createdAt: string;
+  locationId: string;
+  operationId: string;
+  lineId: string;
+  cause: string;
 }
 export interface OutboxDoc {
   _id: string;
@@ -54,11 +61,9 @@ export class MongoStockStore implements StockStore, OutboxRepository {
     this.outbox = db.collection<OutboxDoc>("outbox");
   }
   async setup(): Promise<void> {
-    await this.items.createIndex({ productId: 1 }, { unique: true });
-    await this.movementsCollection.createIndex(
-      { idempotencyKey: 1 },
-      { unique: true },
-    );
+    await assertInventorySchema(this.client);
+    await this.items.createIndex({ productId: 1, locationId: 1 }, { unique: true });
+    await this.movementsCollection.createIndex({ operationId: 1, lineId: 1 }, { unique: true });
     await this.movementsCollection.createIndex({
       productId: 1,
       createdAt: -1,
@@ -67,15 +72,15 @@ export class MongoStockStore implements StockStore, OutboxRepository {
     await this.outbox.createIndex({ status: 1, nextAttemptAt: 1 });
   }
   async find(productId: string): Promise<InventoryItemState | null> {
-    const doc = await this.items.findOne({ productId });
+    const doc = await this.items.findOne({ productId, locationId: DEFAULT_LOCATION_ID });
     if (!doc) return null;
-    const { _id: _unused, ...item } = doc;
+    const { _id: _unused, locationId: _location, ...item } = doc;
     return item;
   }
   async findCommand(
     key: string,
   ): Promise<{ command: StockCommand; result: StockChangeResult } | null> {
-    const doc = await this.movementsCollection.findOne({ idempotencyKey: key });
+    const doc = await this.client.db().collection<any>('stock_commands').findOne({ _id: key });
     return doc ? { command: doc.command, result: doc.result } : null;
   }
   async commit(
@@ -88,10 +93,11 @@ export class MongoStockStore implements StockStore, OutboxRepository {
       await session.withTransaction(async () => {
         if (before) {
           const update = await this.items.updateOne(
-            { productId: command.productId, version: before.version },
+            { productId: command.productId, locationId: DEFAULT_LOCATION_ID, version: before.version },
             {
               $set: {
                 quantityMillis: change.item.quantityMillis,
+                valueMinor: change.item.quantityMillis===0?0:change.item.valueMinor??null,
                 version: change.item.version,
                 updatedAt: change.item.updatedAt,
               },
@@ -101,7 +107,7 @@ export class MongoStockStore implements StockStore, OutboxRepository {
           if (update.matchedCount !== 1) throw new RetryStockWrite();
         } else {
           await this.items.insertOne(
-            { _id: command.productId, ...change.item },
+            { _id: command.productId, ...change.item, locationId: DEFAULT_LOCATION_ID },
             { session },
           );
         }
@@ -118,6 +124,10 @@ export class MongoStockStore implements StockStore, OutboxRepository {
             command,
             result,
             createdAt: change.movement.createdAt,
+            locationId: DEFAULT_LOCATION_ID,
+            operationId: change.movement.id,
+            lineId: '0',
+            cause: 'MANUAL',
           },
           { session },
         );
@@ -133,6 +143,7 @@ export class MongoStockStore implements StockStore, OutboxRepository {
           },
           { session },
         );
+        await this.client.db().collection<any>('stock_commands').insertOne({ _id: command.idempotencyKey, origin: 'LEGACY', fingerprint: 'LEGACY', operationId: change.movement.id, command, result, createdAt: change.movement.createdAt }, { session });
       });
       return true;
     } catch (error) {
@@ -148,7 +159,7 @@ export class MongoStockStore implements StockStore, OutboxRepository {
     }
   }
   async list(): Promise<Items<InventoryRecord>> {
-    const docs = await this.items.find().toArray();
+    const docs = await this.items.find({ locationId: DEFAULT_LOCATION_ID }).toArray();
     return {
       items: docs.map((doc) => ({
         productId: doc.productId,
@@ -158,7 +169,7 @@ export class MongoStockStore implements StockStore, OutboxRepository {
   }
   async movements(productId: string): Promise<Items<StockMovement>> {
     const docs = await this.movementsCollection
-      .find({ productId })
+      .find({ productId, locationId: DEFAULT_LOCATION_ID })
       .sort({ createdAt: -1, _id: -1 })
       .toArray();
     return {

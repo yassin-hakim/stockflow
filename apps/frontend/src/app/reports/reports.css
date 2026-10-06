@@ -1,0 +1,35 @@
+:host { display: block; min-width: 0; }
+.report-filters { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px 20px; align-items: end; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 24px 0; margin-bottom: 12px; }
+.report-filters .field { margin-bottom: 0; min-width: 0; }
+.report-filters button { justify-self: start; }
+#report-period-help { font-size: 12px; }
+.report-scope { display: flex; justify-content: space-between; align-items: start; gap: 24px; margin: 32px 0 16px; }
+.report-scope button { flex-shrink: 0; }
+.report-scope p { font-size: 13px; max-width: 740px; margin-bottom: 8px; }
+.report-scope details { overflow-wrap: anywhere; color: var(--muted); font-size: 12px; }
+.report-scope summary { cursor: pointer; }
+.report-totals { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 24px; margin: 28px 0 20px; padding: 24px 0; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line); }
+.report-totals dt { color: var(--muted); font-size: 12px; }
+.report-totals dd { margin: 8px 0 0; font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.numeric { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.reference { overflow-wrap: anywhere; }
+caption { text-align: left; color: var(--muted); padding: 12px 0; font-size: 13px; background: var(--canvas); }
+.report-items { list-style: none; padding: 0; margin: 0; }
+.report-items li + li { margin-top: 6px; }
+.report-records article, .product-facts article { padding: 20px 0; border-bottom: 1px solid var(--line); }
+.report-records h3, .product-facts h3 { font-size: 15px; margin: 0 0 12px; overflow-wrap: anywhere; }
+.report-records p { margin-bottom: 8px; }
+.product-facts dl { margin: 0; }
+.product-facts dl > div { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 6px; }
+.product-facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+h3 { margin-top: 28px; }
+@media (max-width: 900px) { .report-filters { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 700px) {
+  .report-filters { grid-template-columns: minmax(0,1fr); gap: 16px; }
+  .report-filters input { min-width: 0; }
+  .report-scope { flex-direction: column; gap: 16px; }
+  .report-totals { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px 16px; }
+  .report-totals dd { font-size: 20px; }
+}
+
+.report-records dl {margin:12px 0 0;}.report-records dl > div {display:flex;justify-content:space-between;gap:16px;margin-bottom:8px;}.report-records dd {margin:0;font-variant-numeric:tabular-nums;}

@@ -1,5 +1,6 @@
 <form class="panel" [formGroup]="form()" (ngSubmit)="submitted.emit()" novalidate>
   <h2>{{ type() === 'add' ? 'Add' : 'Remove' }} stock</h2>
+  <p class="stock-action-note">{{type() === 'add' ? 'Record stock arriving at this location.' : 'Record stock leaving this location.'}}</p>
   <div class="field">
     <label [for]="type() + '-quantity'">Quantity ({{ unit() }})</label>
     <input
@@ -39,7 +40,7 @@
       >
     }
   </div>
-  <button type="submit" [disabled]="submitting()">
+  <button type="submit" [disabled]="submitting() || disabled()">
     {{ submitting() ? 'Saving…' : type() === 'add' ? 'Add stock' : 'Remove stock' }}
   </button>
 </form>

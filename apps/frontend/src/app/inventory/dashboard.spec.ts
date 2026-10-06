@@ -12,7 +12,8 @@ describe('Dashboard states', () => {
         {
           provide: BffApi,
           useValue: {
-            listInventory: async () => {
+            listLocations: async () => ({items:[]}),
+            listStock: async () => {
               throw new Error('offline');
             },
           },

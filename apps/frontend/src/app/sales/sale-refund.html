@@ -1,0 +1,114 @@
+<header class="page-head">
+  <div>
+    <span class="eyebrow">Sale correction</span>
+    <h1>Record refund</h1>
+    <p class="muted">
+      Choose sold items and explicitly decide whether ingredients return to stock.
+    </p>
+  </div>
+  @if (sale()) {
+    <a [routerLink]="['/sales', sale()!.id]">Back to sale</a>
+  }
+</header>
+@if (error()) {
+  <p class="error" role="alert">{{ error() | readable:ingredientNames() }}</p>
+}
+@if (storageError()) {
+  <p class="error" role="alert">
+    {{ storageError() | readable:ingredientNames() }} New corrections are blocked until recovery storage is available.
+  </p>
+}
+@if (loading()) {
+  <p role="status">Loading original sale…</p>
+} @else if (!sale()) {
+  <button class="secondary" (click)="load()">Retry sale</button>
+} @else if (sale()!.status !== 'COMPLETED') {
+  <p class="error">Only completed sales can be refunded.</p>
+} @else {
+  @if (result()?.status === 'COMPLETED') {
+    <p class="success" role="status">
+      Refund recorded: {{ result()!.amountMinor / 100 | currency: result()!.currency }}.
+      {{ result()!.restock ? 'Original ingredients were returned.' : 'Stock remained consumed.' }}
+    </p>
+  }
+  @if (blocked() && !busy() && !storageError()) {
+    <section class="pending-region" role="status">
+      <h2>A correction needs confirmation</h2>
+      <p>Refund item quantities remain reserved while its stock return is pending.</p>
+      @if (pending() && (pending()!.kind !== 'REFUND' || pending()!.saleId !== sale()!.id)) {
+        <a routerLink="/pos">Resolve the other saved command</a>
+      } @else {
+        <button type="button" (click)="resolve()">Check correction status</button>
+      }
+    </section>
+  }
+  <p class="reference muted">
+    Original sale {{ label(sale()!) }} · <a [routerLink]="['/locations', sale()!.locationId]">View the original consumption location</a>
+  </p>
+  <form class="panel correction-document" [formGroup]="form" (ngSubmit)="submit()">
+    <fieldset [disabled]="blocked()">
+      <h2>Refund items</h2>
+      @for (line of sale()!.lines; track line.id) {
+        <div class="refund-line">
+          <div>
+            <strong>{{ line.name }}</strong>
+            <p class="muted">
+              {{ line.priceMinor / 100 | currency: sale()!.currency }} each ·
+              {{ remaining(line.id) }} refundable of {{ line.quantity }} sold
+            </p>
+          </div>
+          <div class="field">
+            <label [for]="'refund-count-' + line.id">Refund count</label
+            ><input
+              [id]="'refund-count-' + line.id"
+              type="number"
+              min="0"
+              step="1"
+              [max]="remaining(line.id)"
+              [value]="quantities()[line.id] ?? 0"
+              (input)="change(line.id, $any($event.target).value)"
+            />
+          </div>
+        </div>
+      }
+      <p class="sale-total">
+        Amount to review {{ estimated() / 100 | currency: sale()!.currency }}
+      </p>
+      <p class="muted">Sales confirms the amount from the original recorded prices.</p>
+      <div class="field">
+        <label for="refund-reason">Reason</label
+        ><textarea id="refund-reason" formControlName="reason" maxlength="500" rows="3"></textarea>
+        @if (form.controls.reason.invalid && form.controls.reason.touched) {
+          <small class="error">Enter a reason of 1–500 characters.</small>
+        }
+      </div>
+      <label class="check-field"
+        ><input type="checkbox" formControlName="restock" />Return original ingredients to
+        stock</label
+      >
+      <p class="muted">
+        Leave unchecked for a prepared, spilled or consumed order. Checking this returns the
+        original recipe ingredients to their consumption location.
+      </p>
+      @if (form.controls.restock.value && selected().length) {
+        <section class="pending-region">
+          <h3>Ingredients to return</h3>
+          <ul>
+            @for (ingredient of returnPreview(); track ingredient.name) {
+              <li>
+                {{ ingredient.quantity | number: '1.0-3' }} {{ ingredient.unit }}
+                {{ ingredient.name }}
+              </li>
+            }
+          </ul>
+        </section>
+      }
+      <label class="check-field"
+        ><input type="checkbox" formControlName="confirmed" />I reviewed the quantities and
+        stock-return choice.</label
+      ><button type="submit" [disabled]="blocked()">
+        {{ busy() ? 'Recording…' : 'Record refund' }}
+      </button>
+    </fieldset>
+  </form>
+}

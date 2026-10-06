@@ -15,7 +15,7 @@ export class HttpUpstream {
   async request<T>(
     path: string,
     options: {
-      method?: "GET" | "POST";
+      method?: "GET" | "POST" | "PATCH";
       body?: unknown;
       idempotencyKey?: string;
       requestId?: string;
@@ -74,5 +74,12 @@ export class HttpUpstream {
   }
   health(): Promise<unknown> {
     return this.request("/health/ready");
+  }
+  async requestText(path:string,requestId:string=crypto.randomUUID()):Promise<string>{
+    let response:Response;
+    try{response=await fetch(`${this.baseUrl}${path}`,{headers:{'X-Request-ID':requestId},signal:AbortSignal.timeout(15000)});}catch{throw new UpstreamError(502,'UPSTREAM_UNAVAILABLE','Required report service unavailable.');}
+    if(!response.ok){let envelope:Partial<ApiError>|undefined;try{envelope=await response.json() as Partial<ApiError>;}catch{}if(envelope?.error&&[400,404,409,422,503].includes(response.status))throw new UpstreamError(response.status,envelope.error.code,envelope.error.message);throw new UpstreamError(502,'UPSTREAM_UNAVAILABLE','Required report service unavailable.');}
+    if(!response.headers.get('content-type')?.startsWith('text/csv'))throw new UpstreamError(502,'UPSTREAM_UNAVAILABLE','Invalid report response.');
+    return response.text();
   }
 }

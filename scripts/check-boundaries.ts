@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const roots = ['apps/product-service/src', 'apps/inventory-service/src'];
+const roots = ['apps/product-service/src', 'apps/inventory-service/src', 'apps/sales-service/src'];
 const forbidden = /(?:from\s*['"]|import\s*['"])(?:@nestjs\/|mongodb|@nats-io\/|@stockflow\/contracts|\.\.\/infrastructure|\.\.\/presentation)/;
 let failures = 0;
 function visit(path: string, layer: 'domain' | 'application'): void {
@@ -22,7 +22,7 @@ function checkFrontend(path: string): void {
     const file = join(path, entry);
     if (statSync(file).isDirectory()) { checkFrontend(file); continue; }
     if (!file.endsWith('.ts')) continue;
-    if (/(?:apps\/(?:product-service|inventory-service|audit-worker)|mongodb|@nats-io\/|localhost:300[12])/.test(readFileSync(file, 'utf8'))) { process.stderr.write(`Frontend boundary violation: ${file}\n`); failures++; }
+    if (/(?:apps\/(?:product-service|inventory-service|sales-service|audit-worker)|mongodb|@nats-io\/|localhost:300[123])/.test(readFileSync(file, 'utf8'))) { process.stderr.write(`Frontend boundary violation: ${file}\n`); failures++; }
   }
 }
 checkFrontend('apps/frontend/src');

@@ -1,0 +1,241 @@
+<header class="page-head">
+  <div>
+    <span class="eyebrow">Counter</span>
+    <h1>Point of sale</h1>
+    <p class="muted">Add menu items. Prices update automatically as you build the order.</p>
+  </div>
+  <a routerLink="/sales">Sale history</a>
+</header>
+@if (error()) {
+  <p class="error" role="alert">{{ error() | readable:ingredientNames():menu():locations() }}</p>
+  @if (!pending()) {
+    @if (lines.length && !storageError() && !loading()) {
+      <button
+        type="button"
+        class="secondary"
+        (click)="refreshPrices()"
+        [disabled]="locked() || pricing() || priceQueued()"
+      >
+        Retry price update
+      </button>
+    } @else {
+      <button type="button" class="secondary" (click)="load()" [disabled]="busy() || pricing()">
+        Reload menu and recorded draft
+      </button>
+    }
+  }
+}
+@if (storageError()) {
+  <p class="error" role="alert">
+    {{ storageError() | readable:ingredientNames():menu():locations() }} No new sale can be sent until recovery storage is available.
+  </p>
+}
+@if (message()) {
+  <p class="success" role="status">{{ message() }}</p>
+}
+@if (loading()) {
+  <p role="status">Loading menu and locations…</p>
+} @else if (!menu().length || !locations().length) {
+  @if(!error()) {
+  <section class="panel">
+    <h2>{{ !menu().length ? 'No menu items yet' : 'No storage location yet' }}</h2>
+    <p>Create a recipe menu and a consumption location before making a sale.</p>
+    <a routerLink="/menu/new">Create menu item</a> · <a routerLink="/locations">Manage locations</a>
+  </section>
+  }
+} @else {
+  @if ((pending() && !pricing()) || draft()?.status === 'CHECKOUT_PENDING') {
+    <section class="pending-region" role="status">
+      <h2>Sale outcome needs confirmation</h2>
+      <p>Keep the saved command while its outcome is uncertain. Cart changes are locked.</p>
+      @if (pending()?.kind === 'REFUND') {
+        <a [routerLink]="['/sales', pending()!.saleId, 'refunds', 'new']">Resolve saved refund</a>
+      } @else {
+        <button type="button" [disabled]="busy()" (click)="resolve()">
+          Check saved sale status
+        </button>
+      }
+      @if (draft()) {
+        <p class="reference">{{ label(draft()!) }}</p>
+      }
+    </section>
+  }
+  <form [formGroup]="form">
+    <fieldset [disabled]="locked() || draft()?.status === 'COMPLETED'">
+      <div class="inventory-filters">
+        <div class="field">
+          <label for="pos-location">Consume ingredients from</label
+          ><select id="pos-location" formControlName="locationId">
+            @for (location of locations(); track location.id) {
+              <option [value]="location.id">{{ location.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="field">
+          <label for="pos-search">Find menu item</label
+          ><input
+            id="pos-search"
+            type="search"
+            [value]="search()"
+            (input)="pager.reset();search.set($any($event.target).value)"
+          />
+        </div>
+      </div>
+    </fieldset>
+    @if (lines.length) {
+      <p class="mobile-list cart-shortcut">
+        <a class="button secondary" href="#pos-cart"
+          >{{ itemCount() }} {{ itemCount() === 1 ? 'item' : 'items' }}
+          @if (draft() && (reviewed() || draft()?.status === 'COMPLETED')) {
+            <span> · {{ draft()!.totalMinor / 100 | currency: draft()!.currency }}</span>
+          }
+          · View cart</a
+        >
+      </p>
+    }
+    <div class="pos-layout">
+      <section>
+        <h2>Menu</h2>
+        <ul class="menu-list">
+          @for (item of pager.slice(available()); track item.id) {
+            <li>
+              <div>
+                <strong>{{ item.name }}</strong
+                ><small
+                  >{{ item.category }} ·
+                  {{ item.priceMinor / 100 | currency: item.currency }}</small
+                >
+              </div>
+              <button
+                class="secondary"
+                type="button"
+                [disabled]="locked() || draft()?.status === 'COMPLETED'"
+                (click)="add(item)"
+                [attr.aria-label]="'Add ' + item.name"
+              >
+                Add item
+              </button>
+            </li>
+          } @empty {
+            <li>No matching active menu items. <a routerLink="/menu">Manage menu</a></li>
+          }
+        </ul>
+      <app-pagination [total]="available().length" [page]="pager.current(available().length)" [size]="pager.size()" [hasMore]="false" [busy]="loading() || pager.busy()" (pageChange)="pager.page.set($event)" (sizeChange)="pager.resize($event)" />
+</section>
+      <section class="panel" id="pos-cart">
+        <div class="cart-heading">
+          <h2>Current order</h2>
+          <span>{{ itemCount() }} {{ itemCount() === 1 ? 'item' : 'items' }}</span>
+        </div>
+        @if (!lines.length) {
+          <p class="muted">Add a menu item to start an order.</p>
+        }
+        <fieldset [disabled]="locked() || draft()?.status === 'COMPLETED'" formArrayName="lines">
+          @for (line of lines.controls; track line.controls.menuItemId.value; let index = $index) {
+            <div class="cart-line" [formGroupName]="index">
+              <strong>{{ name(line.controls.menuItemId.value) }}</strong>
+              <div class="field">
+                <label [for]="'cart-quantity-' + index">Item count</label
+                ><input
+                  [id]="'cart-quantity-' + index"
+                  type="number"
+                  min="1"
+                  step="1"
+                  inputmode="numeric"
+                  formControlName="quantity"
+                />
+                @if (line.controls.quantity.invalid && line.controls.quantity.touched) {
+                  <small class="error">Enter a whole positive count.</small>
+                }
+              </div>
+              <button
+                class="secondary"
+                type="button"
+                (click)="remove(index)"
+                [attr.aria-label]="'Remove ' + name(line.controls.menuItemId.value)"
+              >
+                Remove
+              </button>
+            </div>
+          }
+        </fieldset>
+        <div aria-live="polite" aria-atomic="true" [attr.aria-busy]="pricing() || priceQueued()">
+          @if (draft() && (reviewed() || draft()?.status === 'COMPLETED')) {
+            <div class="review">
+              <h3>{{ draft()?.status === 'COMPLETED' ? 'Completed sale' : 'Order total' }}</h3>
+              <ul class="record-list">
+                @for (line of draft()!.lines; track line.id) {
+                  <li>
+                    {{ line.quantity }} × {{ line.name
+                    }}<span>{{ line.totalMinor / 100 | currency: draft()!.currency }}</span
+                    ><small
+                      >{{ line.priceMinor / 100 | currency: draft()!.currency }} each · recipe
+                      {{ line.recipeRevision }}</small
+                    >
+                  </li>
+                }
+              </ul>
+              <p id="reviewed-total" tabindex="-1" class="sale-total">
+                Total {{ draft()!.totalMinor / 100 | currency: draft()!.currency }}
+              </p>
+            </div>
+          } @else if (lines.length) {
+            <p class="muted">
+              {{
+                pricing() || priceQueued()
+                  ? 'Updating total…'
+                  : form.invalid
+                    ? 'Choose a location and enter whole positive item counts.'
+                    : 'The total is not confirmed yet.'
+              }}
+            </p>
+          }
+        </div>
+        <div class="field">
+          <label for="pos-tender">Recorded tender</label
+          ><select
+            id="pos-tender"
+            formControlName="tender"
+            [attr.disabled]="locked() || draft()?.status === 'COMPLETED' ? true : null"
+          >
+            <option value="CASH">Cash</option>
+            <option value="CARD">Card</option></select
+          ><small>Records the tender label. Collect payment separately.</small>
+        </div>
+        @if (draft()?.status === 'COMPLETED') {
+          <a class="button" [routerLink]="['/sales', draft()!.id, 'receipt']">Open receipt</a
+          ><button class="secondary new-sale" type="button" (click)="newSale()">
+            Start new sale
+          </button>
+        } @else {
+          <div class="action-links">
+            <button
+              type="button"
+              [disabled]="
+                locked() ||
+                pricing() ||
+                priceQueued() ||
+                form.invalid ||
+                !lines.length ||
+                !reviewed() ||
+                draft()?.status !== 'DRAFT'
+              "
+              (click)="checkout()"
+            >
+              {{
+                busy()
+                  ? 'Working…'
+                  : pricing() || priceQueued()
+                    ? 'Updating total…'
+                    : 'Complete sale'
+              }}
+            </button>
+          </div>
+        }
+        @if (draft()) {
+          <p class="muted reference">{{ draft()!.status }} · {{ label(draft()!) }}</p>
+        }
+      </section>
+    </div>
+  </form>
+}

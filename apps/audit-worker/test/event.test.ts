@@ -19,6 +19,12 @@ const bytes = (value: unknown) =>
   new TextEncoder().encode(JSON.stringify(value));
 
 describe("audit event boundary", () => {
+  it('accepts v2 operation metadata without weakening v1 validation', () => {
+    const v2 = { ...event, schemaVersion: 2, locationId: randomUUID(), operationId: randomUUID(), cause: 'TRANSFER' };
+    expect(parseEvent(bytes(v2), 'inventory.stock.added')).toEqual(v2);
+    expect(() => parseEvent(bytes({ ...v2, cause: 'Unknown' }), 'inventory.stock.added')).toThrow();
+    expect(() => parseEvent(bytes({ ...event, locationId: randomUUID() }), 'inventory.stock.added')).toThrow();
+  });
   it("accepts a valid v1 event on its subject", () =>
     expect(parseEvent(bytes(event), "inventory.stock.added")).toEqual(event));
   it("rejects mismatched subject, unsupported version and invalid quantity", () => {

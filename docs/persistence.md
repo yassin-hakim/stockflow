@@ -2,46 +2,60 @@
 
 ## Ownership and local topology
 
-One MongoDB server hosts three databases: `stockflow_product` (Product Service), `stockflow_inventory` (Inventory Service), and `stockflow_audit` (audit worker). Database-per-owner is a logical boundary, not an invitation for cross-service queries. BFF and Angular have no MongoDB credentials. The local Docker Compose deployment uses a **single-node replica set** named `rs0`; MongoDB multi-document transactions require a replica set or sharded cluster, even when running locally. See the [MongoDB transaction guide](https://www.mongodb.com/docs/manual/data-modeling/enforce-consistency/transactions/) and [Node.js transaction API](https://www.mongodb.com/docs/drivers/node/current/crud/transactions/transaction-conv/).
-
-Use the official MongoDB Node.js driver 7.7.0 inside repository adapters. The driver client and transaction session stay in infrastructure; domain entities are plain TypeScript objects. The workspace lockfile and Compose file pin the driver and MongoDB server (`mongo:8.0.20`), and transaction behavior was verified against the local replica set.
+The MongoDB `rs0` replica set hosts four databases: Product `stockflow_product`, Inventory `stockflow_inventory`, Sales `stockflow_sales` and Audit `stockflow_audit`. Application code accesses only its owner database; BFF and Angular have no database credentials. A local single-node replica set enables transactions and is not a high-availability deployment.
 
 ## Collections and indexes
 
-| Owner | Collection | Stored fields | Indexes |
-| --- | --- | --- | --- |
-| Product | `products` | `_id` UUID, `name`, `unit`, `category`, `lowStockThresholdMillis`, timestamps | Primary `_id` |
-| Inventory | `inventory` | `_id` UUID, `productId`, `quantityMillis`, `version`, timestamps | Unique `{ productId: 1 }` |
-| Inventory | `stock_movements` | `_id` UUID, `productId`, `type`, `quantityMillis`, `reason`, `resultingQuantityMillis`, `idempotencyKey`, normalized `command`, original public `result`, `createdAt` | Unique `{ idempotencyKey: 1 }`; `{ productId: 1, createdAt: -1, _id: -1 }` |
-| Inventory | `outbox` | `_id` event UUID, `subject`, `payload`, `status`, `attempts`, `nextAttemptAt`, `createdAt`, `publishedAt` | `{ status: 1, nextAttemptAt: 1 }` |
-| Audit | `stock_events` | `_id` event UUID, event envelope, `receivedAt` | Primary `_id` provides event-ID deduplication |
+| Owner | Collections | Critical guards |
+| --- | --- | --- |
+| Product | `products` | UUID primary key, normalized non-null SKU uniqueness, archive/catalog fields |
+| Product | `menu_items`, `recipe_revisions` | Current version; unique `(menuItemId,revision)` immutable snapshot; publication transaction |
+| Inventory | `locations`, `inventory` | Unique normalized location name; unique `(productId,locationId)` and conditional balance version |
+| Inventory | `stock_commands`, `stock_movements` | Global command-key identity and unique operation ID; unique `(operationId,lineId)`; product/location/cause/time indexes |
+| Inventory | `receipts`, `transfers`, `waste_records`, `count_sessions`, `suppliers`, `replenishment_rules` | Command-linked IDs; count version/state; supplier normalized name; unique product/location policy |
+| Inventory | `outbox`, `schema_metadata`, `migration_v1_inventory`, `migration_v1_movements` | Due-pending index; schema readiness; legacy migration copies |
+| Sales | `sales`, `sales_commands`, `checkout_attempts`, `refunds`, `receipts`, `outbox`, `schema_versions` | Unique command/attempt/return IDs; unique receipt sale/reference; recovery and due-outbox indexes |
+| Audit | `stock_events`, `sales_events` | Permanent event-UUID uniqueness; full-payload duplicate comparison |
 
-These collection shapes are infrastructure records, not domain entities. Timestamps are UTC. The API never exposes `quantityMillis`, MongoDB `_id`, `version`, or outbox state; adapters map them to domain and API types. The Product unit is immutable in v1, so existing movements retain their meaning.
+Wire DTOs map `_id`/milliunits to named IDs/product quantities. Conditional catalog/count/rule versions are public for safe edits; driver/outbox details remain internal. Legacy movements and saved original results remain readable.
 
 ## Quantity representation
 
-One product unit equals 1,000 stored milliunits. Thus `1.25 kg` is stored as `1250`, and a maximum balance of `1,000,000,000.000` units is `1,000,000,000,000` milliunits, safely below JavaScript's maximum safe integer. Product low-stock thresholds use the same scale. Validate the parsed JSON number's value as a multiple of `0.001`, convert it to a safe integer, then do all balance arithmetic on integers. Domain tests must cover `0.001`, three-place fractions, zero, negatives, a value such as `1.0001` that needs four nonzero decimal places, equivalent trailing-zero spellings and the maximum.
+One unit is 1000 milliunits. Parsed numbers round-trip through integer scaling, allowing at most three decimals and at most 1,000,000,000 units per balance or command product total. No unit conversion occurs. Money uses separate safe-integer minor units; sold quantities are whole counts. Product and Sales use the same configured two-decimal currency.
 
 ## Atomic stock transaction
 
-1. Normalize and validate the request; check for an existing `idempotencyKey`. If found, compare its stored command details and return the original result or `IDEMPOTENCY_CONFLICT`.
-2. For a first addition, confirm Product Service has the product before opening the MongoDB transaction. The initial logical balance is zero. For removal with no Inventory record, return `INSUFFICIENT_STOCK` without writing.
-3. Load InventoryItem, run the domain method, and create one StockMovement and one outbox event envelope with stable UUIDs.
-4. In one Inventory database transaction, conditionally insert or update the balance using its `version`, insert the movement, and insert the pending outbox row. A write conflict or first-insert unique-key race aborts the whole transaction; reload and rerun the domain rule, at most three attempts.
-5. Return success only after commit. A known duplicate idempotency key found after a race resolves to the original result. If the commit outcome is uncertain, a client retry with the same key resolves safely.
+Inventory checks immutable key identity, plans every line, then atomically writes conditional balances, document/count state, nonzero movements, outbox rows and terminal command result. A conflict aborts the whole transaction; application reloads/replans up to three times. Transfers have paired movements. New business rejections may persist a rejected command result without a balance/movement/event mutation. Count apply commits count state and all affected balances together.
 
-The conditional version check is a persistence guard against two simultaneous removals reading the same balance. The domain rule remains authoritative; a retry re-evaluates it against the latest value. No partial balance, movement or event-intent state is allowed. Do not publish to NATS inside the MongoDB transaction. The [outbox relay](events.md) runs after commit.
+Returns read the original committed `SALE` operation in the transaction, validate derived quantities/location, and update cumulative returned sold-line counts there. That write serializes concurrent returns even for disjoint stock products. Excess return aborts all balance writes. Replay reads the original result without incrementing counts again.
+
+## Sales local transactions and distributed recovery
+
+Sales stores draft/command identity and frozen checkout attempt locally. Preparation writes `CHECKOUT_PENDING` before Inventory dispatch. Finalization records terminal attempt, sale, unique immutable receipt and event intent together. Refund preparation stores correction identity/intent; no-restock completion records cumulative counts and event intent locally. Chosen restock finalizes after Inventory outcome.
+
+A crash between owner commits leaves a persistent pending attempt/refund. Restart recovery checks its original operation UUID, resends immutable input when needed, and finalizes once. Pending correction intent blocks overlap. MongoDB and NATS provide no cross-owner transaction.
+
+## Inventory schema migration
+
+Inventory requires `schema_metadata` Inventory version 2 in state `READY` before startup. Run the [operator migration](../scripts/migrate-inventory.ts) while Inventory/Sales writers are stopped:
+
+```sh
+npm run migrate:inventory
+```
+
+It creates Main Store ID `00000000-0000-4000-8000-000000000001`, copies legacy balances/movements into backup collections, assigns legacy balances to Main Store, backfills command replay and movement operation/line/location/cause metadata, replaces product-only and movement-key unique indexes with location/compound indexes, and marks schema ready. Existing IDs, timestamps, quantities, saved results and pending v1 outbox payloads are preserved. Repeating a ready migration does not duplicate data.
+
+`MONGO_URI` selects the intended database; the script defaults to local `stockflow_inventory`. Test on a copy and inspect sums/IDs/replay first. Backup collections assist investigation; there is no automatic rollback command. After multi-location writes, restoring v1 cannot preserve the expanded state, so an in-place downgrade is unsupported. Fresh databases also require migration before Inventory startup. See [setup](operations.md).
 
 ## Read behavior
 
-`GET /inventory` returns only physically stored balances. The BFF joins those with all Products and displays missing records as zero. `GET /inventory/:productId` returns `INVENTORY_NOT_FOUND` if no row exists; the BFF converts that one condition to a zero projection after confirming Product exists. Movement history uses the compound index and sorts by `(createdAt desc, _id desc)`. The audit worker inserts with `_id = eventId`; on duplicate-key error it verifies the previously stored event is identical. JetStream delivery is acknowledged only after that persistence operation succeeds.
+Legacy `/inventory` reads Main Store. New balances use location identity; the BFF location-free view sums locations. History pages sort by `(createdAt desc,id desc)` with opaque cursors. Reports group quantities per product/unit. Sales totals include committed completions/corrections in their own occurrence-time period and exclude pending/rejected states. Cross-owner reports are independent snapshots, not an atomic reporting instant.
 
 ## Failure and recovery
 
-- Transaction abort, validation failure or overdraw: no balance, movement or outbox row changes.
-- Product Service unavailable during first addition: no Inventory transaction starts; return `UPSTREAM_UNAVAILABLE`.
-- MongoDB unavailable: return `SERVICE_UNAVAILABLE` before success is reported.
-- NATS unavailable after commit: outbox stays pending; reads and future commands can proceed, and relay resumes publication later.
-- Audit MongoDB unavailable: JetStream message stays unacknowledged for redelivery. A unique event ID makes repeat delivery safe.
+Product outage before validation leaves stock untouched. MongoDB abort rolls back balances/documents/movements/outbox together. Broker outage leaves committed HTTP outcomes intact and notifications pending. Audit failure leaves messages unacknowledged. Restore dependencies and resolve the original key/state; never replace an uncertain write's identity. See [operations](operations.md), [events](events.md), [testing](testing.md).
 
-The single-node replica set enables transactions but is **not** a high-availability production design. The system is a local architectural demonstration; production clustering, backups and credentials are outside scope. [Operations](operations.md) defines the intended local configuration.
+
+## Inventory and Sales cost snapshots
+
+Inventory balances store `valueMinor` and `valueCurrency`; operation movements store `costMinor`, and new operation results retain currency. Completed sales and restocked refunds retain `ingredientCostMinor`. Undefined legacy values remain unknown. These fields are additive; existing quantities and records are preserved. See [cost reporting](cost-reporting.md).

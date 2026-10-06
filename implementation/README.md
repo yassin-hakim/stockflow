@@ -1,8 +1,12 @@
 # StockFlow implementation guide
 
-This folder records the completed build sequence for the [design documentation](../docs/README.md). The [eight-phase tracker](phases/README.md) gives each stage its deliverables and inspected evidence. The five applications, Compose file, scripts and tests are implemented; all phases passed their local acceptance gates, including Compose startup and volume-restart verification through WSL. See [verification evidence](verification.md).
+This folder records the completed baseline build and the expanded application work described in the [design documentation](../docs/README.md). The [eight-phase tracker](phases/README.md) preserves the original inventory baseline; the [expansion evidence](expansion/verification.md) records the current six-process application. Compose, scripts and tests are implemented, while composite release gates remain explicitly tracked in the expansion evidence instead of being inferred from a build alone.
 
 The files in `docs/` define product behavior and wire contracts. Use the implementation files to locate work and order it. If an implementation note and a design contract conflict, reconcile them in both places before writing code; do not silently invent a third behavior.
+
+## Complete-app expansion
+
+The [complete-app expansion plan](expansion/README.md) defines the implemented storage locations, receiving, transfers, waste, counts, replenishment, recipe-based POS, sales corrections and operational reports using the existing architecture. Its [twelve-phase tracker](expansion/phases-and-acceptance.md) is the acceptance checklist for the expanded application, separate from the historical eight-phase baseline below. It includes scope reconciliation, service ownership, API/data contracts, page specifications, migration and recovery gates, and a connected interview acceptance scenario.
 
 ## Build order
 

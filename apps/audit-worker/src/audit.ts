@@ -9,17 +9,17 @@ import {
 import { connect } from "@nats-io/transport-node";
 import { jetstream } from "@nats-io/jetstream";
 import { MongoClient, MongoServerError, type Collection } from "mongodb";
-import type { StockEventV1 } from "@stockflow/contracts";
+import type { StockEvent, StockEventV1 } from "@stockflow/contracts";
 import type { AuditRepository } from "./application/handle-stock-event";
 import { HandleStockEvent } from "./application/handle-stock-event";
 
 interface AuditDoc {
   _id: string;
-  event: StockEventV1;
+  event: StockEvent;
   receivedAt: string;
 }
 
-export function parseEvent(data: Uint8Array, subject: string): StockEventV1 {
+export function parseEvent(data: Uint8Array, subject: string): StockEvent {
   let value: unknown;
   try {
     value = JSON.parse(new TextDecoder().decode(data));
@@ -40,18 +40,20 @@ export function parseEvent(data: Uint8Array, subject: string): StockEventV1 {
     "reason",
     "occurredAt",
   ];
+  if (event.schemaVersion === 2) fields.push('locationId', 'operationId', 'cause');
   if (
     Object.keys(event).length !== fields.length ||
     fields.some((field) => !(field in event))
   )
     throw new Error("Invalid event fields.");
   if (
-    event.schemaVersion !== 1 ||
+    ![1,2].includes(event.schemaVersion as number) ||
     !isUuid(event.eventId) ||
     !isUuid(event.movementId) ||
     !isUuid(event.productId)
   )
     throw new Error("Unsupported event version or ID.");
+  if (event.schemaVersion === 2 && (!isUuid(event.locationId) || !isUuid(event.operationId) || !['MANUAL','RECEIPT','TRANSFER','WASTE','COUNT','SALE','SALE_RETURN'].includes(event.cause as string))) throw new Error('Invalid stock operation ID or cause.');
   if (event.eventType !== "StockAdded" && event.eventType !== "StockRemoved")
     throw new Error("Unsupported event type.");
   if (
@@ -79,10 +81,10 @@ export function parseEvent(data: Uint8Array, subject: string): StockEventV1 {
     new Date(event.occurredAt).toISOString() !== event.occurredAt
   )
     throw new Error("Invalid occurredAt.");
-  return event as unknown as StockEventV1;
+  return event as unknown as StockEvent;
 }
 
-export function sameEvent(left: StockEventV1, right: StockEventV1): boolean {
+export function sameEvent(left: StockEvent, right: StockEvent): boolean {
   const fields = [
     "schemaVersion",
     "eventId",
@@ -94,7 +96,7 @@ export function sameEvent(left: StockEventV1, right: StockEventV1): boolean {
     "reason",
     "occurredAt",
   ] as const;
-  return fields.every((field) => left[field] === right[field]);
+  return fields.every((field) => left[field] === right[field]) && left.schemaVersion === right.schemaVersion && (left.schemaVersion === 1 || (right.schemaVersion === 2 && left.locationId === right.locationId && left.operationId === right.operationId && left.cause === right.cause));
 }
 
 export class MongoAuditRepository implements AuditRepository {
@@ -103,7 +105,7 @@ export class MongoAuditRepository implements AuditRepository {
   constructor(client: MongoClient) {
     this.collection = client.db().collection<AuditDoc>("stock_events");
   }
-  async save(event: StockEventV1): Promise<void> {
+  async save(event: StockEvent): Promise<void> {
     try {
       await this.collection.insertOne({
         _id: event.eventId,

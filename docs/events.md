@@ -1,4 +1,4 @@
-# NATS stock-event design
+# NATS stock and Sales event design
 
 ## Role of NATS
 
@@ -19,7 +19,7 @@ The file-backed stream `STOCK_EVENTS` captures `inventory.stock.*` with **WorkQu
 
 ## Integration-event contract, version 1
 
-Publish UTF-8 JSON. `eventId` is created once with the movement and remains stable across outbox retries. `schemaVersion` allows a future consumer to reject an unknown format. `quantity` and `resultingQuantity` are expressed in the Product unit, with at most three decimal places.
+Publish UTF-8 JSON. `eventId` is created once with the movement and remains stable across outbox retries. The worker accepts stock schema versions 1 and 2 and rejects unsupported formats. `quantity` and `resultingQuantity` are expressed in the Product unit, with at most three decimal places.
 
 ```json
 {
@@ -39,7 +39,7 @@ Publish UTF-8 JSON. `eventId` is created once with the movement and remains stab
 
 ## Transactional outbox and relay
 
-The stock use case atomically writes InventoryItem, StockMovement and a `PENDING` outbox row in one Inventory MongoDB transaction. The outbox `_id` equals `eventId`; it stores the subject and serialized version-1 payload. The HTTP response is successful after this commit, even if the relay has not published yet.
+The stock use case atomically writes InventoryItem, StockMovement and a `PENDING` outbox row in one Inventory MongoDB transaction. The outbox `_id` equals `eventId`; it stores the subject and immutable stock v1/v2 payload. The HTTP response is successful after this commit, even if the relay has not published yet.
 
 The Inventory Service relay polls due `PENDING` rows every 500 ms in batches of at most 100. In this local design there is one Inventory Service instance and one relay, so no distributed lease is required. For each row it publishes through the official NATS JavaScript transport and JetStream packages, sets the NATS message ID to `eventId`, waits for `PubAck`, then marks the row `PUBLISHED` with `publishedAt`. On failure it increments `attempts`, records the next due time using the bounded schedule (1 s, 5 s, 30 s, then 5 min for later attempts), and logs the event ID and cause. An outage must leave the record pending, never silently discard it.
 
@@ -47,7 +47,7 @@ If the process crashes after `PubAck` but before marking the row published, it m
 
 ## Audit consumer
 
-The worker's `parseEvent` validates JSON, version, subject/type agreement, UUIDs, positive three-decimal quantity, reason, resulting quantity and UTC time. `HandleStockEvent` delegates persistence to `AuditRepository`. `MongoAuditRepository` inserts into `stockflow_audit.stock_events` with `_id = eventId`. On duplicate-key failure, it reads the existing event and compares the full payload. It acknowledges only after a successful write or an identical previously stored payload. The same ID with different payload is a contract violation: log it and leave the message unacknowledged for investigation. If persistence fails it also leaves the message unacknowledged; JetStream redelivers according to consumer backoff. Unsupported versions or malformed messages produce an `Event left unacknowledged` error log and remain pending for operator resolution. Current failure logs do not include stream sequence metadata; successful and duplicate-processing logs include event IDs.
+The worker's `parseEvent` validates JSON, supported stock version, subject/type agreement, UUIDs, positive three-decimal quantity, reason, resulting quantity and UTC time. `HandleStockEvent` delegates persistence to `AuditRepository`. `MongoAuditRepository` inserts into `stockflow_audit.stock_events` with `_id = eventId`. On duplicate-key failure, it reads the existing event and compares the full payload. It acknowledges only after a successful write or an identical previously stored payload. The same ID with different payload is a contract violation: log it and leave the message unacknowledged for investigation. If persistence fails it also leaves the message unacknowledged; JetStream redelivers according to consumer backoff. Unsupported versions or malformed messages produce an `Event left unacknowledged` error log and remain pending for operator resolution. Current failure logs do not include stream sequence metadata; successful and duplicate-processing logs include event IDs.
 
 ## Observable states and failure tests
 
@@ -61,3 +61,28 @@ The worker's `parseEvent` validates JSON, version, subject/type agreement, UUIDs
 | Audit MongoDB down | Message is not acknowledged; redelivery later inserts it |
 
 The operations guide defines pending-outbox and consumer-lag checks. The [testing guide](testing.md) makes these cases acceptance tests. NATS server and JetStream are the required messaging technology; Kafka, Redis and a second broker are not part of this design.
+
+## Stock version 2 and compatibility
+
+New location-aware operations publish stock v2 using the same subjects, `STOCK_EVENTS` stream and `stock-audit` consumer. V2 adds `locationId`, `operationId` and `cause` to every v1 field. Cause is `MANUAL`, `RECEIPT`, `TRANSFER`, `WASTE`, `COUNT`, `SALE` or `SALE_RETURN`. Transfer has two movement events per product, linked by operation ID. Unchanged count lines have no movement/event.
+
+Legacy routes continue producing stock v1. Migration preserves already-pending payloads, event/movement IDs and occurrence times. Audit validates and permanently deduplicates both versions, without translating old payloads into new ones. The API's committed/rejected operation history comes from Inventory, not audit arrivals.
+
+## Sales stream and event contract
+
+Sales owns a separate file-backed `SALES_EVENTS` stream for `sales.sale.*` and durable pull consumer `sales-audit`. It uses the same WorkQueue retention, explicit acknowledgment, unlimited delivery, no automatic eviction, discard-New and two-minute transport duplicate window as stock. `setup:nats` initializes/validates both streams/consumers and does not delete retained data. One audit process consumes both families into separate collections.
+
+| Sales event | Subject | Audit collection |
+| --- | --- | --- |
+| `SaleCompleted` | `sales.sale.completed` | `stockflow_audit.sales_events` |
+| `SaleRefunded` | `sales.sale.refunded` | `stockflow_audit.sales_events` |
+
+Sales event schema 1 requires `schemaVersion`, `eventId`, `eventType`, `saleId`, `referenceId`, `locationId`, `amountMinor`, `currency`, `occurredAt`, and permits optional `receiptReference`. `referenceId` is the checkout attempt or refund UUID; `receiptReference` holds the printable receipt label when present. Amount is a nonnegative safe integer in minor units; currency is explicit. Event/type must match subject and timestamps are UTC. Audit stores the validated immutable envelope plus receive time, compares identical duplicates including the optional receipt reference and leaves malformed/conflicting messages unacknowledged.
+
+Checkout finalization writes the sale, immutable receipt and one `SaleCompleted` event intent in its Sales-local transaction. Completed corrections write one `SaleRefunded` intent. A rejected/pending checkout or refund has no completed-event intent. Ingredient consumption/return has separate stock movement events; they are never substituted for Sales events.
+
+## Sales publication and recovery loop
+
+Sales background work polls every second. It recovers up to 25 pending checkout attempts and 25 pending refunds, then publishes up to 25 due outbox records. It waits for PubAck from `SALES_EVENTS` before recording publication. Failed publication uses bounded exponential retry delays, capped at 60 seconds. Workflow and outbox failures are logged separately. Broker outages do not alter a committed sale/refund HTTP outcome.
+
+A PubAck followed by process death before marking publication may cause repeated transport delivery. Event-ID storage deduplication remains the correctness guard beyond JetStream's temporary duplicate window. There is no exactly-once transport claim. Record current outage/restart observations in [expansion evidence](../implementation/expansion/verification.md); the earlier stock-only evidence remains historical.

@@ -1,0 +1,32 @@
+<div class="page-head">
+  <div><span class="eyebrow">Menu catalog</span>
+    <h1>Menu</h1><p class="muted">Selling prices and ingredient recipes for your POS.</p></div>
+  <a class="button" routerLink="/menu/new">Create menu item</a>
+</div>
+<div class="inventory-filters">
+  <div class="field"><label for="menu-search">Search menu items</label><input id="menu-search" type="search" [value]="query()" (input)="pager.reset();query.set($any($event.target).value)" /></div>
+  <div class="field"><label for="menu-category">Category</label><select id="menu-category" [value]="category()" (change)="pager.reset();category.set($any($event.target).value)"><option value="">All categories</option>@for (value of categories(); track value) { <option [value]="value">{{ value }}</option> }</select></div>
+  <div class="field"><label for="menu-state">Availability</label><select id="menu-state" [value]="status()" (change)="pager.reset();status.set($any($event.target).value)"><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option><option value="ALL">All menu items</option></select></div>
+</div>
+@if (loading()) {
+  <p role="status">Loading menu…</p>
+} @else if (error()) {
+  <p class="error" role="alert">{{ error() | readable }}</p><button type="button" (click)="load()">Retry</button>
+} @else if (!items().length) {
+  <section class="panel"><h2>No menu items yet</h2><p>Create a sellable item with a price and recipe. Its ingredients will be consumed when a sale completes.</p><a routerLink="/menu/new">Create menu item</a></section>
+} @else if (!filtered().length) {
+  <p role="status">No menu items match these filters.</p><button type="button" class="secondary" (click)="resetFilters()">Clear filters</button>
+} @else {
+  <div class="panel table-wrap desktop-table"><table><thead><tr><th scope="col">Menu item</th><th scope="col">Category</th><th scope="col" class="numeric">Selling price</th><th scope="col">Recipe</th><th scope="col">Availability</th></tr></thead><tbody>
+    @for (item of pager.slice(filtered()); track item.id) {
+      <tr><td><a [routerLink]="['/menu', item.id]">{{ item.name }}</a></td><td>{{ item.category }}</td><td class="numeric">{{ money(item.priceMinor, item.currency) }}</td><td>Revision {{ item.recipeRevision }}</td><td>{{ item.archivedAt ? 'Archived' : 'Active' }}</td></tr>
+    }
+  </tbody></table></div>
+  <div class="stack mobile-list">
+    @for (item of pager.slice(filtered()); track item.id) {
+      <article class="panel"><h2><a [routerLink]="['/menu', item.id]">{{ item.name }}</a></h2><p>{{ item.category }} · {{ item.archivedAt ? 'Archived' : 'Active' }}</p><p><strong>{{ money(item.priceMinor, item.currency) }}</strong></p><p class="muted">Recipe revision {{ item.recipeRevision }}</p></article>
+    }
+  </div>
+}
+
+@if(!loading()){<app-pagination [total]="filtered().length" [page]="pager.current(filtered().length)" [size]="pager.size()" [hasMore]="false" [busy]="loading() || pager.busy()" (pageChange)="pager.page.set($event)" (sizeChange)="pager.resize($event)" />}

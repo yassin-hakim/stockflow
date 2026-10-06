@@ -14,6 +14,10 @@ Refresh after a confirmed add/remove command and on explicit Retry. The componen
 
 ## Acceptance
 
+## Expanded history
+
+The current page uses cursor-based `/api/stock/:productId/movements` with selected location, optional purpose, and optional UTC half-open date bounds. Date inputs use browser-local wall time and reject invalid or reversed periods before requesting a page. Apply filters resets the displayed page. Cursor requests retain the applied filters while the employee edits the next search. Previous pages stay cached; 10/25/50-row controls paginate the list. Desktop tables and equivalent mobile lists use the shared 700/701 px breakpoint.
+
 - [x] The 50 kg ADD and 10 kg REMOVE demo displays `+50 kg` and `−10 kg` in newest-first order with reasons.
 - [x] A rejected removal adds no row.
 - [x] Empty, loading and failure states are distinct and keyboard accessible.

@@ -15,7 +15,7 @@
     "piscina": "5.3.2"
   },
   "scripts": {
-    "build": "npm run build -w @stockflow/primitives && npm run build -w @stockflow/contracts && npm run build -w @stockflow/product-service && npm run build -w @stockflow/inventory-service && npm run build -w @stockflow/bff && npm run build -w @stockflow/audit-worker && npm run build -w @stockflow/frontend",
+    "build": "npm run build -w @stockflow/primitives && npm run build -w @stockflow/contracts && npm run build -w @stockflow/product-service && npm run build -w @stockflow/inventory-service && npm run build -w @stockflow/sales-service && npm run build -w @stockflow/bff && npm run build -w @stockflow/audit-worker && npm run build -w @stockflow/frontend",
     "test": "vitest run",
     "configure": "node scripts/configure.mjs",
     "dev:product": "npm run dev -w @stockflow/product-service",
@@ -25,6 +25,7 @@
     "dev:frontend": "npm run start -w @stockflow/frontend",
     "setup:nats": "tsx scripts/setup-nats.ts",
     "setup:mongo": "tsx scripts/setup-mongo.ts",
+    "migrate:inventory": "tsx --tsconfig tsconfig.backend.json scripts/migrate-inventory.ts",
     "check:boundaries": "tsx scripts/check-boundaries.ts",
     "check:docs": "tsx scripts/check-doc-links.ts",
     "verify:demo": "tsx scripts/verify-demo.ts",
@@ -36,7 +37,10 @@
     "verify:nats-outage": "tsx scripts/verify-nats-outage.ts",
     "verify:infrastructure-restart": "tsx --tsconfig tsconfig.backend.json scripts/verify-infrastructure-restart.ts",
     "verify:review": "tsx --tsconfig tsconfig.backend.json scripts/verify-review-fixes.ts",
-    "verify:shutdown": "tsx --tsconfig tsconfig.backend.json scripts/verify-service-shutdown.ts"
+    "verify:shutdown": "tsx --tsconfig tsconfig.backend.json scripts/verify-service-shutdown.ts",
+    "dev:sales": "npm run dev -w @stockflow/sales-service",
+    "verify:inventory-expansion": "tsx --tsconfig tsconfig.backend.json scripts/verify-inventory-expansion.ts",
+    "verify:report-exports": "tsx --tsconfig tsconfig.backend.json scripts/verify-report-exports.ts"
   },
   "devDependencies": {
     "@types/node": "22.16.0",

@@ -5,9 +5,13 @@ import {
   CreateProduct,
   GetProduct,
   ListProducts,
+  ManageProduct,
 } from "./application/product-use-cases";
 import { MongoProductRepository } from "./infrastructure/mongo-product-repository";
 import { ProductController } from "./presentation/product-controller";
+import { MenuCatalog } from './application/menu-use-cases';
+import { MongoMenuRepository } from './infrastructure/mongo-menu-repository';
+import { MenuController } from './presentation/menu-controller';
 
 @Controller("health")
 class HealthController {
@@ -29,7 +33,7 @@ export class MongoShutdown {
 }
 
 @Module({
-  controllers: [ProductController, HealthController],
+  controllers: [ProductController, MenuController, HealthController],
   providers: [
     {
       provide: MongoShutdown,
@@ -46,7 +50,11 @@ export class MongoShutdown {
     },
     {
       provide: "PRODUCT_REPO",
-      useFactory: (client: MongoClient) => new MongoProductRepository(client),
+      useFactory: async (client: MongoClient) => {
+        const repository = new MongoProductRepository(client);
+        await repository.setup();
+        return repository;
+      },
       inject: ["MONGO_CLIENT"],
     },
     {
@@ -63,6 +71,17 @@ export class MongoShutdown {
       provide: "GET_PRODUCT",
       useFactory: (repo: ProductRepository) => new GetProduct(repo),
       inject: ["PRODUCT_REPO"],
+    },
+    { provide: 'MANAGE_PRODUCT', useFactory: (repo: MongoProductRepository) => new ManageProduct(repo), inject: ['PRODUCT_REPO'] },
+    {
+      provide: 'MENU_REPO',
+      useFactory: async (client: MongoClient) => { const repo = new MongoMenuRepository(client); await repo.setup(); return repo; },
+      inject: ['MONGO_CLIENT'],
+    },
+    {
+      provide: 'MENU_CATALOG',
+      useFactory: (repo: MongoMenuRepository, products: ProductRepository) => new MenuCatalog(repo, products, process.env.PRODUCT_CURRENCY ?? process.env.CURRENCY ?? 'USD'),
+      inject: ['MENU_REPO', 'PRODUCT_REPO'],
     },
   ],
 })

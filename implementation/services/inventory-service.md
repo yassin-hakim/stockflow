@@ -1,5 +1,7 @@
 # Inventory Service implementation
 
+The original add/remove baseline and its checked evidence are preserved below. Current location operations, counts, replenishment and sale allocations extend this service; their acceptance status belongs to the [expansion tracker](../expansion/phases-and-acceptance.md), not the historical checklist.
+
 ## Responsibility and boundary
 
 Build `apps/inventory-service` as the sole owner of balances, movements and pending stock events. It runs as a NestJS HTTP process on local port 3002, with an outbox relay provider in the same process. It may call Product Service over HTTP to confirm a product on its first addition; it never reads Product MongoDB or stores product name/unit. Read [docs/domain.md](../../docs/domain.md), [docs/persistence.md](../../docs/persistence.md), and the [stock consistency path](../architecture/stock-consistency.md) first.
@@ -12,7 +14,7 @@ The stock use cases check idempotency before attempting a new change. Same key a
 
 ## Infrastructure and transaction
 
-The official MongoDB Node.js driver connects to `stockflow_inventory`. `MongoStockStore` implements `StockStore` and `OutboxRepository`; its `commit` method runs one transaction that inserts or version-updates the Inventory record and inserts both movement and outbox event. Indexes include unique `productId` and `idempotencyKey` plus movement-history and outbox-due indexes in [docs/persistence.md](../../docs/persistence.md). The application handles transaction conflicts and unique first-insert races by reloading and rerunning domain behavior up to three times. It never publishes to NATS within the transaction.
+The official MongoDB Node.js driver connects to `stockflow_inventory`. `MongoStockStore` implements `StockStore` and `OutboxRepository`; its `commit` method runs one transaction that inserts or version-updates the Inventory record and inserts both movement and outbox event. The original unique-product index is replaced by unique `(productId,locationId)` during migration, with global command identities and movement/outbox indexes specified in [docs/persistence.md](../../docs/persistence.md). The application handles transaction conflicts and unique first-insert races by reloading and rerunning domain behavior up to three times. It never publishes to NATS within the transaction.
 
 Implement `HttpProductCatalog` against Product Service `GET /products/:id`, with a 5-second timeout and distinct not-found vs unavailable mapping. Implement `NatsEventPublisher` against JetStream and the outbox relay exactly as [docs/events.md](../../docs/events.md) specifies. Use a stable `eventId` and stored envelope on retries. If NATS is down after commit, return stock-command success and retain the outbox row. Only one Inventory Service instance runs in the local design, so the relay needs no distributed claim mechanism.
 
@@ -29,3 +31,13 @@ Controller validation checks UUIDs, quantity precision/range and reason. Stable 
 - [x] HTTP tests cover list/detail, add/remove, movements, error codes and request validation.
 - [x] Replica-set tests prove transaction atomicity, first-insert race handling and concurrent-removal safety.
 - [x] Outbox relay tests prove PubAck handling, pending retry when NATS fails and stable event ID on duplicate publish.
+
+## Implemented expansion
+
+Legacy `/inventory` routes operate on Main Store, preserve v1 response/replay identity and do not represent restaurant totals. New `/stock` reads are location-aware; the BFF composes restaurant totals. [StockOperations](../../apps/inventory-service/src/application/operations.ts), [InventoryManagement](../../apps/inventory-service/src/application/inventory-management.ts) and [Warehouses](../../apps/inventory-service/src/application/warehouse.ts) use framework-free ports. [MongoOperationsStore](../../apps/inventory-service/src/infrastructure/mongo-operations-store.ts) implements local transactions for multi-line receiving, paired transfers, waste, count application and sale consume/return.
+
+Commands commit all balances, movement/event intents and replay results together. New recorded business rejections contain no stock effects. Counts snapshot balance versions and row absence; null is uncounted and zero is explicit. Apply rejects stale snapshots, updates count state atomically, and emits no movements/events for unchanged entries. Suppliers validate receiving references; rules store per-location threshold/target and server-derived suggestions. Filtered histories/report queries preserve period/cursor constraints and do not sum unlike units.
+
+Sale consumption records per-sale-line original allocations and validates aggregate ingredients. Return accepts original operation ID and sold-line counts; it derives ingredients/location from that consumption and serializes cumulative return limits independently of Sales. It cannot add caller-supplied ingredient totals. Stock v2 extends events without rewriting pending v1 envelopes. Existing data requires the writer-stopped operator migration in [operations](../../docs/operations.md).
+
+[Inventory expansion verification](../../scripts/verify-inventory-expansion.ts) exercises actual replica-set transaction rollback/concurrency and management/return semantics in an isolated database. Real HTTP, broker, restart and browser gates remain separate.

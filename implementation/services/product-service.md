@@ -1,5 +1,7 @@
 # Product Service implementation
 
+The checked verification list below records the original baseline. Expanded Product/Menu behavior is described in the current [API](../../docs/api.md), [domain](../../docs/domain.md) and [expansion acceptance](../expansion/phases-and-acceptance.md); baseline evidence does not establish those new gates.
+
 ## Responsibility and boundary
 
 Build `apps/product-service` as an independent NestJS HTTP process on local port 3001. It owns the Product bounded context and `stockflow_product.products`; it does not create Inventory rows, adjust stock or publish stock events. Its internal HTTP contract is specified in [docs/api.md](../../docs/api.md), and its domain model in [docs/domain.md](../../docs/domain.md).
@@ -20,8 +22,16 @@ When Inventory Service calls `GET /products/:id` before a first stock addition, 
 
 ## Verification
 
+These checks refer to the original three-route baseline.
+
 - [x] Pure domain/use-case tests cover trimmed names, threshold default/precision/range, required fields and unknown IDs.
 - [x] HTTP tests cover all three routes, status codes, DTO rejection and error envelope.
 - [x] MongoDB integration test persists and reloads every Product field, including milliunit threshold.
 - [x] A Product creation test proves no Inventory database write or event publication occurs.
 - [x] `GET /health/ready` distinguishes a running process from an unavailable Product database.
+
+## Implemented expansion
+
+Product now owns conditional editable-field updates, immutable base units, normalized unique optional SKU and archive state. Menu items own checked minor-unit prices and immutable ingredient recipe revisions; publishing/archive uses expected versions. Archived records remain readable for historical receipts and movements. MongoDB indexes and schema setup are owner-local. New recipes require active ingredients; new receiving cannot add archived Product stock. Sales consumes versioned menu snapshots over HTTP, never Product persistence.
+
+See [Product application](../../apps/product-service/src/application/product-use-cases.ts) and [menu application](../../apps/product-service/src/application/menu-use-cases.ts) for current use cases. The v1 no-update sentence above describes the historical baseline only; the approved expansion adds edit/archive without product deletion or unit changes.

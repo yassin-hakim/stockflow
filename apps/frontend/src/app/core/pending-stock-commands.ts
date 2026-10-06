@@ -18,6 +18,7 @@ export interface PendingStockCommand {
   quantity: number;
   reason: string;
   key: string;
+  locationId?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -37,6 +38,7 @@ export class PendingStockCommands {
       value.productId !== id ||
       !isUuid(value.productId) ||
       !isUuid(value.key) ||
+      (value.locationId !== undefined && !isUuid(value.locationId)) ||
       !['add', 'remove'].includes(value.type ?? '') ||
       quantityMillis(value.quantity) === null ||
       typeof value.reason !== 'string' ||
@@ -52,7 +54,7 @@ export class PendingStockCommands {
   save(command: PendingStockCommand): void {
     // Persist before sending: a refresh during the POST must retain its identity.
     const previous = this.get(command.productId);
-    if (previous && previous.key !== command.key)
+    if (previous && (previous.key !== command.key || previous.locationId !== command.locationId || previous.quantity !== command.quantity || previous.reason !== command.reason || previous.type !== command.type))
       throw new Error('Resolve the earlier stock request first.');
     this.storage!.setItem(this.storageKey(command.productId), JSON.stringify(command));
   }

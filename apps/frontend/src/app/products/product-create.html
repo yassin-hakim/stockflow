@@ -1,11 +1,21 @@
 <div class="page-head">
   <div>
-    <h1>Create product</h1>
-    <p class="muted">New products start with zero stock.</p>
+    <span class="eyebrow">Ingredient catalog</span>
+    <h1>{{ id ? 'Edit product' : 'Create product' }}</h1>
+    <p class="muted">{{ id ? 'Product units stay fixed so stock history remains accurate.' : 'New products start with zero stock.' }}</p>
   </div>
   <a routerLink="/inventory">Back to inventory</a>
 </div>
+@if (loading()) {
+  <p role="status">Loading product…</p>
+} @else if (id && !product()) {
+  <p class="error" role="alert">{{ error() | readable }}</p><button type="button" (click)="load()">Retry</button>
+} @else if (product()?.archivedAt) {
+  <p role="status">This product is archived. Its stock and history remain available.</p>
+  <a [routerLink]="['/products', id]">View product history</a>
+} @else {
 <form class="panel" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <div class="form-section-heading"><h2>Product identity</h2><p>The name, code and base unit used in stock records.</p></div>
   <div class="field">
     <label for="name">Product name</label
     ><input
@@ -19,6 +29,11 @@
     @if (validation() && invalidName()) {
       <small class="error" id="name-error">Enter a product name of 1–100 characters.</small>
     }
+  </div>
+  <div class="field">
+    <label for="sku">SKU</label><input id="sku" formControlName="sku" maxlength="50" />
+    <small>Optional unique code. Use letters, digits, dots, underscores or hyphens.</small>
+    @if (validation() && form.controls.sku.invalid) { <small class="error">Enter a valid SKU up to 50 characters.</small> }
   </div>
   <div class="grid-2">
     <div class="field">
@@ -52,6 +67,7 @@
     </div>
   </div>
   <div class="field">
+    <h2>Stock settings</h2>
     <label for="threshold">Low-stock threshold</label
     ><input
       id="threshold"
@@ -73,15 +89,34 @@
     <p class="error" role="alert" tabindex="-1" id="product-validation">{{ validation() }}</p>
   }
   @if (error()) {
-    <p class="error" role="alert" tabindex="-1" id="product-error">{{ error() }}</p>
+    <p class="error" role="alert" tabindex="-1" id="product-error">{{ error() | readable }}</p>
+  }
+  @if(refreshNeeded()){<p><button class="secondary" type="button" [disabled]="submitting()" (click)="refreshCurrent()">Load latest saved product for review</button></p>}
+  @if(reviewLoaded()){
+    <section class="pending-region"><h2>Review saved values</h2><p>Latest saved product: {{product()?.name}} · {{product()?.category}} · SKU {{product()?.sku || 'none'}} · threshold {{product()?.lowStockThreshold}} {{product()?.unit}}.</p><p>Your form still contains your entered values.</p><label class="check-field"><input id="product-conflict-review" type="checkbox" [checked]="!reviewRequired()" (change)="reviewRequired.set(!$any($event.target).checked)">I reviewed my changes against the latest saved product.</label></section>
   }
   @if (uncertain()) {
+    @if (id) {
+      <p><button type="button" class="secondary" [disabled]="submitting()" (click)="checkOutcome()">Check saved product</button></p>
+    } @else {
     <p>
       <a routerLink="/inventory">Check inventory for the product</a> before starting another
       creation attempt.
     </p>
+    }
   }
-  <button type="submit" [disabled]="submitting() || uncertain()">
-    {{ submitting() ? 'Creating…' : 'Create product' }}
-  </button>
+  <div class="form-footer"><button type="submit" [disabled]="submitting() || uncertain() || refreshNeeded() || reviewRequired()">
+    {{ submitting() ? 'Saving…' : (id ? 'Save product' : 'Create product') }}
+  </button><a routerLink="/inventory">Cancel</a></div>
 </form>
+@if (id) {
+  <section class="archive-section">
+    <h2>Archive product</h2><p class="muted">Hide this product from new receiving and menu selection. Existing stock and history are kept.</p>
+    @if (confirmingArchive()) {
+      <p role="status">Archive {{ product()?.name }}?</p>
+      <button type="button" class="danger" [disabled]="submitting() || uncertain() || refreshNeeded() || reviewRequired()" (click)="archive()">Confirm archive</button>
+      <button type="button" class="secondary" (click)="confirmingArchive.set(false)">Keep product active</button>
+    } @else { <button type="button" class="secondary" [disabled]="submitting() || uncertain() || refreshNeeded() || reviewRequired()" (click)="confirmingArchive.set(true)">Archive product</button> }
+  </section>
+}
+}

@@ -2,63 +2,60 @@
 
 ## Bounded contexts
 
-**Product** defines what can be stocked. It owns product identity and descriptive data. **Inventory** defines stock balance, movements and stock business rules. Product has no method that changes inventory; Inventory never edits product details. The BFF assembles a read model for the dashboard but owns neither context.
+Product defines ingredients and sellable recipe configurations. Inventory owns every stock-changing decision. Sales owns priced orders and corrections. BFF composes frontend read models; Audit stores notifications without replacing owner histories.
 
 ### Product model
 
-`Product`: `id`, `name`, `unit`, `category`, `lowStockThresholdMillis`, `createdAt`, `updatedAt`. Creation requires nonblank name, unit and category. Names and categories are trimmed; name is at most 100 characters, category at most 80, unit at most 20. Threshold is nonnegative, at most `1,000,000,000.000` units, and defaults to zero. Product identifiers are opaque UUIDs. There is no update or delete use case in the initial scope.
+Product has UUID identity, trimmed name/category/unit, default threshold in milliunits, optional normalized SKU, version, archive timestamp and creation/update timestamps. Name/category/unit limits are 100/80/20 characters. SKU is uppercase, at most 50 characters, beginning with a letter or digit and containing letters, digits, dots, underscores or hyphens. An absent SKU has no uniqueness obligation. `ManageProduct` applies conditional edits/archive; base unit cannot change and archived ingredients retain historical reads.
 
-Use cases: `CreateProduct`, `ListProducts`, `GetProduct`. `ProductRepository` provides `insert`, `findAll`, and `findById`. The MongoDB implementation is private to Product Service. The BFF calls Product Service through HTTP; it does not share the repository.
+`MenuCatalog` owns menu identity, nonnegative safe-integer minor-unit price, configured two-decimal currency, archive state and recipe revision. Recipes contain 1–100 positive base-unit ingredient lines. Product validates ingredient existence/active state, combines repeated ingredients with checked integer arithmetic, and stores name/unit snapshots. Creation stores revision 1; publishing conditionally replaces the current item and inserts an immutable revision in one Product transaction. Archived items cannot be republished. Historical revisions remain readable.
 
 ### Inventory model
 
-`InventoryItem` wraps an `InventoryItemState`: `productId`, `quantityMillis`, `version`, `createdAt`, `updatedAt`. Domain methods `addStock(command, now)` and `removeStock(command, now)` accept a normalized `StockCommand` and return a `StockChange` containing the new item state, movement and event. They reject amounts ≤ 0, resulting balance > `1,000,000,000,000` milliunits, and removals larger than the current balance.
+Legacy `InventoryItem` and `StockUseCases` preserve add/remove behavior in Main Store. `OperationCommand`/`planOperation` handle `MANUAL`, `RECEIPT`, `TRANSFER`, `WASTE`, `COUNT`, `SALE` and `SALE_RETURN` across location balances. Quantity arithmetic uses integer thousandths; maximum quantity is 1,000,000,000 units (1,000,000,000,000 milliunits). Commands are positive except counts and thresholds/targets, which allow explicit zero.
 
-`DomainStockMovement` contains `id`, `productId`, `type` (`ADD`/`REMOVE`), `quantityMillis`, `reason` and `createdAt`. Its persistence record additionally stores `resultingQuantityMillis`, `idempotencyKey`, the normalized `command`, and the original public `result` for safe retries. `DomainStockEvent` contains `eventId`, `eventType` (`StockAdded`/`StockRemoved`), `movementId`, `productId`, milliunit quantities, reason and occurrence time. These events are created only for successful changes.
+Commands contain location(s), normalized lines, explanation, reference and immutable operation identity. Lines combine/sort before fingerprinting. A reused key with changed kind/location/input fails. Transfer decreases source and increases destination together, preserving totals. Receiving/manual addition rejects archived products. Waste requires category and explanation.
 
-The pure domain function `toMillis` delegates numeric conversion to `quantityMillis` in `packages/primitives` and maps invalid input to a stock error. There is no separate `Quantity` class. It accepts multiples of `0.001` in the range `0.001`–`1,000,000,000.000` for a change. Conversion rounds the scaled value to a safe integer, then requires division by 1000 to reproduce the original parsed number exactly. This accepts valid thousandths at large magnitudes while rejecting finer precision. JSON spelling and trailing zeros do not matter. The same maximum applies to balances. APIs convert integer milliunits back to product units; stock arithmetic uses integers.
+Count creation captures quantity and version/absence per selected product. Blank counted fields remain null; zero means physically none. Draft edits use expected count version. Apply requires every entry, verifies each captured balance version/absence and commits count state with all balances. A newly-created zero record differs from an absent record. Stale counts retain draft comparisons and require a fresh snapshot/recount. Unchanged count lines create no zero-quantity movements/events.
 
-Reasons are required, trimmed, and 1–200 characters. Duplicate `Idempotency-Key` with the same product, action, quantity and reason returns the originally committed movement and balance; a different command using the key fails with `IDEMPOTENCY_CONFLICT`. The key is checked at the application/persistence boundary, not in the InventoryItem entity.
+Location replenishment rules have nonnegative low threshold and target with target >= threshold. Inventory computes `max(0,target-current)` in milliunits when current <= threshold; otherwise suggestion is zero. Missing policy/target remains null. BFF supplies Product threshold fallback and labels; Angular never calculates the policy.
+
+### Sales model
+
+`SalesUseCases` prices drafts from Product snapshots. Counts are positive safe integers; price/count/ingredient multiplication is checked. A draft can be conditionally edited, cancelled before checkout, or prepared using reviewed version and `CASH`/`CARD` label. Tender records a choice; it does not process a payment.
+
+Frozen attempts store original menu/recipe/price/ingredient snapshots, sale-line IDs and Inventory operation UUID. Catalog changes before prepare require review. Prepared retry/recovery uses the same snapshots. Completed receipts preserve original items, counts, prices, currency and total.
+
+Refund quantities and money derive from original sold-line prices, bounded by cumulative completed corrections. No-restock refunds leave ingredients consumed. Chosen restock is a pending workflow; Inventory derives exact amounts from original per-item allocations and serializes cumulative returned counts on the original consumption record. Later recipes never reinterpret old returns.
 
 ## Invariants and error ownership
 
-| Invariant or condition | Owner | Error/result |
+| Invariant | Owner | Result |
 | --- | --- | --- |
-| Quantity is positive with at most three decimal places | `toMillis` conversion and `InventoryItem` safe-integer validation; API checks shape | `INVALID_QUANTITY` |
-| Stock never becomes negative | `InventoryItem.removeStock` | `INSUFFICIENT_STOCK` |
-| Balance never exceeds maximum | `InventoryItem.addStock` | `STOCK_LIMIT_EXCEEDED` |
-| A valid change has one movement and one event intent | Stock use case transaction | Commit all three records or none |
-| Product exists for first stock addition | Inventory application via `ProductCatalog` port | `PRODUCT_NOT_FOUND` |
-| Repeated command does not change stock again | Application plus unique MongoDB index | Original result or `IDEMPOTENCY_CONFLICT` |
-
-The HTTP layer translates these domain/application errors to the [API error envelope](api.md). MongoDB write conflicts and NATS transport details do not become domain errors.
+| Immutable unit, unique SKU, conditional edit | Product | Rejection / `SKU_CONFLICT` / `VERSION_CONFLICT` |
+| Published ingredients exist and are usable | Product | `INVALID_RECIPE` / ingredient/catalog errors |
+| Nonnegative bounded stock and atomic bundle | Inventory | `INSUFFICIENT_STOCK` / `STOCK_LIMIT_EXCEEDED`; no partial stock write |
+| Immutable global stock command identity | Inventory | Stored replay / `IDEMPOTENCY_CONFLICT` |
+| Count snapshot still current, including absence | Inventory | `COUNT_STALE` |
+| Suggested quantity or absent target | Inventory | Integer-derived value or null |
+| Reviewed draft and frozen snapshots | Sales | Review/version conflict or recoverable pending |
+| Bounded refund counts/money | Sales | `REFUND_LIMIT_EXCEEDED` |
+| Bounded original stock allocations | Inventory | Return commit / `REFUND_LIMIT_EXCEEDED` |
+| Immutable event UUID payload | Audit | Identical duplicate accepted; conflict unacknowledged |
 
 ## Application use cases and ports
 
-| Use case | Reads/writes | Ports |
+| Context | Use cases | Service-owned ports |
 | --- | --- | --- |
-| `StockUseCases.change` with `ADD` | Validate product when no inventory exists; load/retry balance; commit inventory, movement and pending event | `ProductCatalog`, `StockStore` |
-| `StockUseCases.change` with `REMOVE` | Load/retry balance; reject overdraw; commit inventory, movement and pending event | `StockStore` |
-| `StockUseCases.get` / `.list` | Read stored balances; absence means logical zero to BFF | `InventoryRepository` through `StockStore` |
-| `StockUseCases.movements` | Read a product's movements newest first | `StockMovementRepository` through `StockStore` |
-| `PublishPendingEvents.execute` | Publish outbox messages and mark acknowledged rows | `OutboxRepository`, `EventPublisher` |
-
-`StockUnitOfWork` is an application port representing the atomic write of balance, movement and outbox intent. `StockStore` combines it with the `InventoryRepository` and `StockMovementRepository` read ports. `MongoStockStore` implements those ports and owns sessions, transactions and version-checked updates. `ProductCatalog` is a port implemented by `HttpProductCatalog` for Product Service. `EventPublisher` is implemented by `NatsEventPublisher` with JetStream publish acknowledgments. The audit worker has its own `AuditRepository` port and MongoDB adapter. Ports remain specific to each service.
+| Product | Create/List/Get/ManageProduct, MenuCatalog | ProductRepository, MenuRepository |
+| Inventory | StockUseCases, StockOperations, Warehouses, InventoryManagement, PublishPendingEvents | StockStore/StockUnitOfWork, OperationStore, WarehouseRepository, InventoryManagementRepository, OperationCatalog, EventPublisher |
+| Sales | SalesUseCases: draft, checkout/resolve, refund/resolve, recover | SalesStore/transaction, CatalogPort, InventoryPort |
+| Audit | HandleStockEvent and Sales handling | AuditRepository |
 
 ## Dependency direction
 
-```text
-HTTP controller / NATS handler (presentation)
-                 ↓
-Application use case → service-specific port
-                 ↓                 ↑
-           Domain model      MongoDB / HTTP / NATS adapter
-```
-
-Domain code may import other domain code and language utilities only. Application code may import domain and its own port interfaces, never NestJS, MongoDB or NATS packages. Infrastructure adapters may import the application ports and infrastructure libraries. NestJS modules wire concrete adapters to tokens. Test fakes implement ports without starting infrastructure.
+Presentation invokes application use cases, which use domain behavior and service-specific ports. Infrastructure implements ports; NestJS modules compose them. Domain/application import no NestJS, MongoDB, NATS or frontend types. [Boundary checks](../scripts/check-boundaries.ts) cover all three business contexts. Shared transport DTOs do not become domain entities.
 
 ## Cross-context and transaction boundaries
 
-Product creation commits only Product Service data. On the first add, Inventory checks Product Service before starting its local MongoDB transaction; a product lookup failure aborts the command. No distributed transaction spans Product and Inventory. During inventory reads, the BFF joins products with existing balances; an absent balance displays as zero. Inventory transactions cover only Inventory-owned collections. The outbox turns a committed domain event into an eventual integration event; it does not make NATS part of the MongoDB transaction.
-
-Read [architecture](architecture.md) for process placement, [persistence](persistence.md) for transaction mechanics, and [events](events.md) for the integration-event envelope.
+Product lookups happen through HTTP. Each database transaction covers only its owner collections. Persisted intent precedes remote checkout/return dispatch, with explicit pending states and bounded recovery scans. MongoDB commits precede asynchronous outbox publication. See [persistence](persistence.md), [events](events.md), [architecture](architecture.md).

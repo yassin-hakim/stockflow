@@ -1,8 +1,21 @@
+<a class="skip-link" href="#main-content">Skip to content</a>
 <header class="shell-header">
-  <a routerLink="/inventory" class="brand">StockFlow</a>
-  <nav aria-label="Main navigation">
-    <a routerLink="/inventory" routerLinkActive="active">Inventory</a
-    ><a routerLink="/products/new" routerLinkActive="active">New product</a>
+  <div class="shell-identity">
+    <a routerLink="/inventory" class="brand" aria-label="StockFlow inventory">
+      <svg class="brand-mark" width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true"><rect x="1" y="1" width="28" height="28" rx="7" fill="currentColor"/><path d="M8 9h14M8 15h10M8 21h14" stroke="white" stroke-width="2.5"/></svg>
+      <span>StockFlow</span>
+    </a>
+    <span class="shell-purpose">Restaurant operations</span>
+    <button class="nav-toggle secondary" type="button" [attr.aria-expanded]="menuOpen()" aria-controls="main-navigation" (click)="menuOpen.set(!menuOpen())">{{ menuOpen() ? 'Close menu' : 'Menu' }}</button>
+  </div>
+  <nav id="main-navigation" aria-label="Main navigation" [class.open]="menuOpen()" (keydown.escape)="closeMenu()" (click)="menuOpen.set(false)">
+    <a routerLink="/inventory" [class.active]="section() === 'inventory'" [attr.aria-current]="section() === 'inventory' ? 'page' : null">Inventory</a>
+    <a routerLink="/operations" [class.active]="section() === 'operations'" [attr.aria-current]="section() === 'operations' ? 'page' : null">Operations</a>
+    <a routerLink="/menu" [class.active]="section() === 'menu'" [attr.aria-current]="section() === 'menu' ? 'page' : null">Menu</a>
+    <a routerLink="/pos" [class.active]="section() === 'pos'" [attr.aria-current]="section() === 'pos' ? 'page' : null">Point of sale</a>
+    <a routerLink="/sales" [class.active]="section() === 'sales'" [attr.aria-current]="section() === 'sales' ? 'page' : null">Sales</a>
+    <a routerLink="/reports" [class.active]="section() === 'reports'" [attr.aria-current]="section() === 'reports' ? 'page' : null">Reports</a>
   </nav>
 </header>
-<main class="shell-main"><router-outlet /></main>
+<main id="main-content" class="shell-main" tabindex="-1"><router-outlet /></main>
+<footer class="shell-footer"><span>StockFlow</span><span>Inventory · Kitchen · Counter</span></footer>

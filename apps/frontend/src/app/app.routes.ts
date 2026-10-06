@@ -1,13 +1,35 @@
 import { Routes } from '@angular/router';
-import { Dashboard } from './inventory/dashboard';
-import { ProductCreate } from './products/product-create';
-import { ProductDetail } from './products/product-detail';
-import { NotFound } from './shared/not-found';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'inventory' },
-  { path: 'inventory', component: Dashboard, title: 'Inventory | StockFlow' },
-  { path: 'products/new', component: ProductCreate, title: 'New product | StockFlow' },
-  { path: 'products/:id', component: ProductDetail, title: 'Product | StockFlow' },
-  { path: '**', component: NotFound, title: 'Page not found | StockFlow' },
+  { path: 'inventory', loadComponent: () => import('./inventory/dashboard').then(m => m.Dashboard), title: 'Inventory | StockFlow' },
+  { path: 'menu', loadComponent: () => import('./menu/menu-list').then(m => m.MenuList), title: 'Menu | StockFlow' },
+  { path: 'menu/new', loadComponent: () => import('./menu/menu-item-page').then(m => m.MenuItemPage), title: 'New menu item | StockFlow' },
+  { path: 'menu/:id', loadComponent: () => import('./menu/menu-item-page').then(m => m.MenuItemPage), title: 'Menu item | StockFlow' },
+  { path: 'pos', loadComponent: () => import('./sales/pos').then(m => m.Pos), title: 'POS | StockFlow' },
+  { path: 'reports', loadComponent: () => import('./reports/reports').then(m => m.Reports), title: 'Reports | StockFlow' },
+  { path: 'sales', loadComponent: () => import('./sales/sales-history').then(m => m.SalesHistory), title: 'Sales | StockFlow' },
+  { path: 'sales/:id/receipt', loadComponent: () => import('./sales/sale-receipt').then(m => m.SaleReceipt), title: 'Receipt | StockFlow' },
+  { path: 'sales/:id/refunds/new', loadComponent: () => import('./sales/sale-refund').then(m => m.SaleRefund), title: 'Refund | StockFlow' },
+  { path: 'sales/:id', loadComponent: () => import('./sales/sale-detail').then(m => m.SaleDetail), title: 'Sale | StockFlow' },
+  { path: 'counts', loadComponent: () => import('./inventory/stock-count').then(m => m.StockCounts), title: 'Counts | StockFlow' },
+  { path: 'counts/new', loadComponent: () => import('./inventory/stock-count').then(m => m.StockCounts), title: 'New count | StockFlow' },
+  { path: 'counts/:id', loadComponent: () => import('./inventory/stock-count').then(m => m.StockCounts), title: 'Physical count | StockFlow' },
+  { path: 'replenishment', loadComponent: () => import('./inventory/replenishment').then(m => m.Replenishment), title: 'Replenishment | StockFlow' },
+  { path: 'suppliers', loadComponent: () => import('./inventory/suppliers').then(m => m.Suppliers), title: 'Suppliers | StockFlow' },
+  { path: 'locations', loadComponent: () => import('./inventory/locations').then(m => m.Locations), title: 'Locations | StockFlow' },
+  { path: 'locations/new', loadComponent: () => import('./inventory/locations').then(m => m.Locations), title: 'New location | StockFlow' },
+  { path: 'locations/:id', loadComponent: () => import('./inventory/dashboard').then(m => m.Dashboard), title: 'Location inventory | StockFlow' },
+  { path: 'operations', loadComponent: () => import('./operations/operation-history').then(m => m.OperationHistory), title: 'Operations | StockFlow' },
+  { path: 'operations/:id', loadComponent: () => import('./operations/operation-history').then(m => m.OperationHistory), title: 'Stock operation | StockFlow' },
+  { path: 'receipts/new', loadComponent: () => import('./operations/operation-form').then(m => m.OperationForm), data:{kind:'receipts'}, title: 'Receive delivery | StockFlow' },
+  { path: 'transfers/new', loadComponent: () => import('./operations/operation-form').then(m => m.OperationForm), data:{kind:'transfers'}, title: 'Transfer stock | StockFlow' },
+  { path: 'waste/new', loadComponent: () => import('./operations/operation-form').then(m => m.OperationForm), data:{kind:'waste'}, title: 'Record waste | StockFlow' },
+  { path: 'receipts/:id', loadComponent: () => import('./operations/operation-history').then(m => m.OperationHistory), title: 'Delivery | StockFlow' },
+  { path: 'transfers/:id', loadComponent: () => import('./operations/operation-history').then(m => m.OperationHistory), title: 'Transfer | StockFlow' },
+  { path: 'waste/:id', loadComponent: () => import('./operations/operation-history').then(m => m.OperationHistory), title: 'Waste | StockFlow' },
+  { path: 'products/new', loadComponent: () => import('./products/product-create').then(m => m.ProductCreate), title: 'New product | StockFlow' },
+  { path: 'products/:id/edit', loadComponent: () => import('./products/product-create').then(m => m.ProductCreate), title: 'Edit product | StockFlow' },
+  { path: 'products/:id', loadComponent: () => import('./products/product-detail').then(m => m.ProductDetail), title: 'Product | StockFlow' },
+  { path: '**', loadComponent: () => import('./shared/not-found').then(m => m.NotFound), title: 'Page not found | StockFlow' },
 ];

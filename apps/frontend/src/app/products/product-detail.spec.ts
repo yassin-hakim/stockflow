@@ -23,13 +23,59 @@ const overview = {
 describe('ProductDetail retry behavior', () => {
   beforeEach(() => sessionStorage.clear());
   afterEach(() => sessionStorage.clear());
+  it('keeps the displayed location aligned with the requested balance when options arrive asynchronously', async () => {
+    const main = '00000000-0000-4000-8000-000000000001', bar = '00000000-0000-4000-8000-000000000002';
+    const api = {
+      listLocations: async () => ({items:[{id:bar,name:'Bar'},{id:main,name:'Main Store'}]}),
+      getStock: async () => ({...overview,locations:[{locationId:main,name:'Main Store',quantity:40,status:'OK'},{locationId:bar,name:'Bar',quantity:0,status:'OUT'}]}),
+      getStockMovements: async () => ({items:[],nextCursor:null}),
+    };
+    await TestBed.configureTestingModule({imports:[ProductDetail],providers:[provideRouter([]),{provide:BffApi,useValue:api},{provide:ActivatedRoute,useValue:{snapshot:{paramMap:{get:()=>productId}}}}]}).compileComponents();
+    const fixture = TestBed.createComponent(ProductDetail);
+    fixture.detectChanges();
+    await fixture.componentInstance.reload();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#product-location').value).toBe(main);
+    const breakdown = fixture.nativeElement.querySelector('[aria-label="Stock by location"]');
+    expect(breakdown.textContent).toContain('Main Store');
+    expect(breakdown.textContent).toContain('40 kg');
+    expect(breakdown.textContent).toContain('0 kg');
+  });
+  it('keeps applied movement filters across cursor pages and resets pagination on a new filter', async () => {
+    const requests: Record<string,string>[] = [];
+    const api = {
+      listLocations: async()=>({items:[]}), getStock:async()=>overview,
+      getStockMovements: async(_id:string,params:Record<string,string>)=>{requests.push(params);return {items:[],nextCursor:'next'};},
+    };
+    await TestBed.configureTestingModule({imports:[ProductDetail],providers:[provideRouter([]),{provide:BffApi,useValue:api},{provide:ActivatedRoute,useValue:{snapshot:{paramMap:{get:()=>productId}}}}]}).compileComponents();
+    const fixture = TestBed.createComponent(ProductDetail);
+    await fixture.whenStable();
+    const component = fixture.componentInstance;
+    component.historyFilters.setValue({cause:'RECEIPT',from:'2026-10-06T00:00',to:'2026-10-07T00:00'});
+    await component.loadHistory();
+    const applied = requests.at(-1)!;
+    component.historyFilters.controls.cause.setValue('WASTE');
+    await component.loadHistory(true);
+    expect(requests.at(-1)).toEqual({...applied,cursor:'next'});
+    component.pager.page.set(3);
+    await component.loadHistory();
+    expect(requests.at(-1)?.['cause']).toBe('WASTE');
+    expect(requests.at(-1)?.['cursor']).toBeUndefined();
+    expect(component.pager.page()).toBe(1);
+    const calls = requests.length;
+    component.historyFilters.controls.to.setValue('2026-10-05T00:00');
+    await component.loadHistory();
+    expect(requests.length).toBe(calls);
+    expect(component.historyValidation()).toBeTruthy();
+  });
   it('reuses the same key after an uncertain failure and blocks a changed command', async () => {
     const keys: string[] = [];
     let calls = 0;
     const api = {
-      getInventory: async () => overview,
-      getMovements: async () => ({ items: [] }),
-      changeStock: async (_id: string, _type: string, _body: unknown, key: string) => {
+      listLocations: async () => ({items:[]}), getStock: async () => overview,
+      getStockMovements: async () => ({ items: [], nextCursor:null }),
+      changeLocationStock: async (_id: string, _type: string, _body: unknown, key: string) => {
         keys.push(key);
         calls++;
         if (calls === 1) throw new HttpErrorResponse({ status: 0 });
@@ -73,9 +119,9 @@ describe('ProductDetail retry behavior', () => {
   it('marks and focuses an invalid stock quantity without sending a command', async () => {
     let calls = 0;
     const api = {
-      getInventory: async () => overview,
-      getMovements: async () => ({ items: [] }),
-      changeStock: async () => {
+      listLocations: async () => ({items:[]}), getStock: async () => overview,
+      getStockMovements: async () => ({ items: [], nextCursor:null }),
+      changeLocationStock: async () => {
         calls++;
       },
     };
@@ -108,9 +154,9 @@ describe('ProductDetail retry behavior', () => {
       resolve = resolveResult;
     });
     const api = {
-      getInventory: async () => overview,
-      getMovements: async () => ({ items: [] }),
-      changeStock: async () => {
+      listLocations: async () => ({items:[]}), getStock: async () => overview,
+      getStockMovements: async () => ({ items: [], nextCursor:null }),
+      changeLocationStock: async () => {
         calls++;
         return pending;
       },
@@ -147,9 +193,9 @@ describe('ProductDetail retry behavior', () => {
     const keys: string[] = [];
     let fail = true;
     const api = {
-      getInventory: async () => overview,
-      getMovements: async () => ({ items: [] }),
-      changeStock: async (_id: string, _type: string, _body: unknown, key: string) => {
+      listLocations: async () => ({items:[]}), getStock: async () => overview,
+      getStockMovements: async () => ({ items: [], nextCursor:null }),
+      changeLocationStock: async (_id: string, _type: string, _body: unknown, key: string) => {
         keys.push(key);
         if (fail) throw new HttpErrorResponse({ status: 0 });
         return {
@@ -203,9 +249,9 @@ describe('ProductDetail retry behavior', () => {
   });
   it('persists the command before the HTTP call begins', async () => {
     const api = {
-      getInventory: async () => overview,
-      getMovements: async () => ({ items: [] }),
-      changeStock: async (_id: string, _type: string, _body: unknown, key: string) => {
+      listLocations: async () => ({items:[]}), getStock: async () => overview,
+      getStockMovements: async () => ({ items: [], nextCursor:null }),
+      changeLocationStock: async (_id: string, _type: string, _body: unknown, key: string) => {
         expect(TestBed.inject(PendingStockCommands).get(productId)?.key).toBe(key);
         throw new HttpErrorResponse({ status: 0 });
       },
@@ -237,9 +283,9 @@ describe('ProductDetail retry behavior', () => {
       },
     };
     const api = {
-      getInventory: async () => overview,
-      getMovements: async () => ({ items: [] }),
-      changeStock,
+      listLocations: async () => ({items:[]}), getStock: async () => overview,
+      getStockMovements: async () => ({ items: [], nextCursor:null }),
+      changeLocationStock: changeStock,
     };
     await TestBed.configureTestingModule({
       imports: [ProductDetail],
@@ -260,9 +306,9 @@ describe('ProductDetail retry behavior', () => {
   it('renders distinct add/remove forms and connects native submit events', async () => {
     const changeStock = vi.fn(async () => ({ productId, quantity: 39 }));
     const api = {
-      getInventory: async () => overview,
-      getMovements: async () => ({ items: [] }),
-      changeStock,
+      listLocations: async () => ({items:[]}), getStock: async () => overview,
+      getStockMovements: async () => ({ items: [], nextCursor:null }),
+      changeLocationStock: changeStock,
     };
     await TestBed.configureTestingModule({
       imports: [ProductDetail],
@@ -285,7 +331,7 @@ describe('ProductDetail retry behavior', () => {
     expect(changeStock).toHaveBeenCalledWith(
       productId,
       'remove',
-      { quantity: 1, reason: 'Order' },
+      { locationId: '00000000-0000-4000-8000-000000000001', quantity: 1, reason: 'Order' },
       expect.any(String),
     );
   });

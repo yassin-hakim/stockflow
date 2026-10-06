@@ -7,6 +7,12 @@ import { MongoStockStore } from "./infrastructure/mongo-stock-store";
 import { OutboxRelay } from "./infrastructure/outbox-relay";
 import { NatsEventPublisher } from "./infrastructure/nats-event-publisher";
 import { InventoryController } from "./presentation/inventory-controller";
+import { OperationsController } from "./presentation/operations-controller";
+import { MongoOperationsStore } from "./infrastructure/mongo-operations-store";
+import { StockOperations } from "./application/operations";
+import { InventoryManagement } from "./application/inventory-management";
+import { ManagementController } from "./presentation/management-controller";
+import { Warehouses } from "./application/warehouse";
 
 function requiredUrl(
   name: "PRODUCT_SERVICE_URL" | "NATS_URL",
@@ -48,7 +54,12 @@ export class MongoShutdown {
 }
 
 @Module({
-  controllers: [InventoryController, HealthController],
+  controllers: [
+    InventoryController,
+    OperationsController,
+    ManagementController,
+    HealthController,
+  ],
   providers: [
     {
       provide: MongoShutdown,
@@ -77,6 +88,35 @@ export class MongoShutdown {
       provide: "PRODUCT_CATALOG",
       useFactory: () =>
         new HttpProductCatalog(requiredUrl("PRODUCT_SERVICE_URL", "http:")),
+    },
+    {
+      provide: "OPERATIONS_STORE",
+      useFactory: async (client: MongoClient) => {
+        const store = new MongoOperationsStore(client);
+        await store.setup();
+        return store;
+      },
+      inject: ["MONGO_CLIENT"],
+    },
+    {
+      provide: "STOCK_OPERATIONS",
+      useFactory: (store: MongoOperationsStore, products: HttpProductCatalog) =>
+        new StockOperations(store, products,process.env.CURRENCY??'USD'),
+      inject: ["OPERATIONS_STORE", "PRODUCT_CATALOG"],
+    },
+    {
+      provide: "INVENTORY_MANAGEMENT",
+      useFactory: (
+        store: MongoOperationsStore,
+        products: HttpProductCatalog,
+        operations: StockOperations,
+      ) => new InventoryManagement(store, products, operations),
+      inject: ["OPERATIONS_STORE", "PRODUCT_CATALOG", "STOCK_OPERATIONS"],
+    },
+    {
+      provide: "WAREHOUSES",
+      useFactory: (store: MongoOperationsStore) => new Warehouses(store),
+      inject: ["OPERATIONS_STORE"],
     },
     {
       provide: "STOCK_USES",

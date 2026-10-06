@@ -1,0 +1,255 @@
+<app-section-nav area="operations" />
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Stock verification</span>
+    <h1>
+      {{
+        mode === 'new'
+          ? 'Start physical count'
+          : mode === 'detail'
+            ? 'Physical count'
+            : 'Physical counts'
+      }}
+    </h1>
+    <p class="muted">Compare recorded stock with ingredients physically on hand.</p>
+  </div>
+  <div class="action-links">
+    <a routerLink="/operations">Operations</a>
+    @if (mode !== 'new') {
+      <a class="button" routerLink="/counts/new">Start count</a>
+    }
+  </div>
+</div>
+@if (error()) {
+  <p id="count-error" class="error" role="alert" tabindex="-1">{{ error() | readable:products():locations() }}</p>
+}
+@if (message()) {
+  <p class="success" role="status">{{ message() }}</p>
+}
+@if (pending(); as request) {
+  <section class="pending-region" role="status">
+    <h2>Resolve the saved count request</h2>
+    <p>The original request identity is saved. Its outcome is still uncertain.</p>
+    <div class="action-links">
+      <button type="button" class="secondary" [disabled]="busy()" (click)="checkStatus()">
+        Check status
+      </button>
+      @if (request.kind === 'CREATE') {
+        <a routerLink="/counts/new">Open count creation</a>
+      } @else {
+        <a [routerLink]="['/counts', request.countId]">Open saved count</a>
+      }
+    </div>
+  </section>
+}
+@if (loading()) {
+  <p role="status">Loading count information…</p>
+} @else if (mode === 'list') {
+  @if (counts().length === 0 && !error()) {
+    <p>No physical counts yet. Start a count to compare stock against what is on hand.</p>
+  }
+  <ul class="record-list">
+    @for (record of pager.slice(counts()); track record.id) {
+      <li>
+        <a [routerLink]="['/counts', record.id]"
+          >{{ location(record.locationId) }} · {{ record.createdAt | date: 'medium' }}</a
+        ><span>{{ record.status }}</span>
+        <p>{{ record.reason | readable:products():locations() }} · {{ record.lines.length }} ingredients</p>
+      </li>
+    }
+  </ul>
+  <app-pagination [total]="counts().length" [page]="pager.current(counts().length)" [size]="pager.size()" [hasMore]="!!nextCursor()" [busy]="loading() || pager.busy()" (pageChange)="pageTo($event)" (sizeChange)="resizePage($event)" />
+  @if (error()) {
+    <button type="button" class="secondary" (click)="load()">Retry counts</button>
+  }
+} @else if (mode === 'new') {
+  <form class="panel count-document" [formGroup]="createForm" (ngSubmit)="create()" novalidate>
+    <fieldset [disabled]="locked()">
+      <legend class="sr-only">Count snapshot details</legend>
+      <div class="grid-2">
+        <div class="field">
+          <label for="count-location">Location</label
+          ><select id="count-location" formControlName="locationId" required>
+            <option value="">Choose location</option>
+            @for (location of locations(); track location.id) {
+              <option [value]="location.id">{{ location.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="field">
+          <label for="count-reason">Reason for count</label
+          ><input id="count-reason" formControlName="reason" maxlength="200" required />
+        </div>
+      </div>
+      <h2>Ingredients to count</h2><app-pagination label="Ingredient selection pages" [total]="products().length" [page]="productPager.current(products().length)" [size]="productPager.size()" (pageChange)="productPager.page.set($event)" (sizeChange)="productPager.resize($event)" />
+      <p class="muted">
+        Select up to 100 ingredients. Recorded quantities are captured when you start.
+      </p>
+      <div class="count-choices">@for (product of productPager.slice(products()); track product.id) {
+        <label class="check-field"
+          ><input
+            type="checkbox"
+            [checked]="chosen().includes(product.id)"
+            (change)="choose(product.id, $any($event.target).checked)"
+          />{{ product.name }} · {{ product.unit }}</label
+        >
+      } @empty {
+        <p>
+          No ingredients exist. <a routerLink="/products/new">Create an ingredient</a> before
+          counting.
+        </p>
+      }</div>
+    </fieldset>
+    <p>
+      <button
+        [disabled]="busy() || storageBlocked() || (pending() && pending()?.kind !== 'CREATE')"
+      >
+        {{ busy() ? 'Starting…' : pending() ? 'Retry original request' : 'Start count' }}
+      </button>
+    </p>
+  </form>
+} @else if (count(); as record) {
+  <p>
+    <strong>{{ location(record.locationId) }}</strong> · {{ record.status }} · Snapshot
+    {{ record.createdAt | date: 'medium' }}
+  </p>
+  <p>{{ record.reason | readable:products():locations() }}</p>
+  @if (stale()) {
+    <section class="pending-region">
+      <h2>This snapshot needs a recount</h2>
+      <p>
+        Stock changed after this count started. Your entries remain below for comparison. Start a
+        new count and physically recount before applying.
+      </p>
+      <a routerLink="/counts/new">Start a fresh count</a>
+    </section>
+  }
+  @if (record.status === 'DRAFT') {
+    <form [formGroup]="entryForm" (ngSubmit)="saveReview()" novalidate>
+      <fieldset [disabled]="locked() || stale()">
+        <legend class="sr-only">Physically counted ingredients</legend>
+        <div formArrayName="lines" class="stack">
+          @for (line of lines.controls; track line; let index = $index) {
+            <div class="operation-line" [formGroupName]="index">
+              <div>
+                <strong>{{
+                  product(line.controls.productId.value)?.name || 'Unavailable ingredient'
+                }}</strong>
+                <p class="muted">
+                  Recorded {{ record.lines[index].recordedQuantity }}
+                  {{ product(line.controls.productId.value)?.unit }}
+                </p>
+              </div>
+              <div class="field">
+                <label [for]="'counted-' + index"
+                  >Physically counted {{ product(line.controls.productId.value)?.unit }}</label
+                ><input
+                  [id]="'counted-' + index"
+                  type="number"
+                  min="0"
+                  step="0.001"
+                  formControlName="countedQuantity"
+                  (input)="unreview()"
+                /><small>Leave blank until counted; enter 0 for none.</small>
+              </div>
+            </div>
+          }
+        </div>
+      </fieldset>
+      <p class="action-links">
+        <button [disabled]="locked() || stale()">
+          {{ busy() ? 'Saving…' : 'Save and review count' }}</button
+        ><button type="button" class="secondary" [disabled]="locked()" (click)="cancel()">
+          Cancel count
+        </button>
+      </p>
+    </form>
+  }
+  @if (reviewed() || record.status !== 'DRAFT') {
+    <section>
+      <h2 id="count-review" tabindex="-1">
+        {{ record.status === 'DRAFT' ? 'Review adjustments' : 'Count quantities' }}
+      </h2>
+      <p class="muted">
+        Differences are calculated from this saved snapshot. An intervening stock movement prevents
+        application.
+      </p>
+      <div class="desktop-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Ingredient</th>
+              <th class="numeric">Recorded</th>
+              <th class="numeric">Counted</th>
+              <th class="numeric">Difference</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (line of record.lines; track line.productId) {
+              <tr>
+                <td>{{ product(line.productId)?.name || 'Unavailable ingredient' }}</td>
+                <td class="numeric">{{ line.recordedQuantity }} {{ product(line.productId)?.unit }}</td>
+                <td class="numeric">
+                  {{ line.countedQuantity === null ? 'Uncounted' : line.countedQuantity }}
+                  {{ product(line.productId)?.unit }}
+                </td>
+                <td class="numeric">
+                  {{ line.differenceQuantity === null ? 'Uncounted' : line.differenceQuantity }}
+                  {{ product(line.productId)?.unit }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <ul class="mobile-list record-list">
+        @for (line of record.lines; track line.productId) {
+          <li>
+            <strong>{{ product(line.productId)?.name || 'Unavailable ingredient' }}</strong>
+            <p>
+              Recorded {{ line.recordedQuantity }} {{ product(line.productId)?.unit }} · Counted
+              {{ line.countedQuantity === null ? 'Uncounted' : line.countedQuantity }}
+              {{ product(line.productId)?.unit }}
+            </p>
+            <p>
+              Difference
+              {{ line.differenceQuantity === null ? 'Uncounted' : line.differenceQuantity }}
+              {{ product(line.productId)?.unit }}
+            </p>
+          </li>
+        }
+      </ul>
+      @if (record.status === 'DRAFT' && !stale()) {
+        <label class="check-field"
+          ><input
+            type="checkbox"
+            [checked]="confirmed()"
+            [disabled]="locked()"
+            (change)="confirmed.set($any($event.target).checked)"
+          />I confirm these physical counts and stock adjustments.</label
+        >
+        <p>
+          <button
+            type="button"
+            [disabled]="busy() || storageBlocked() || (!pending() && !confirmed())"
+            (click)="apply()"
+          >
+            {{
+              busy() ? 'Applying…' : pending() ? 'Retry original apply' : 'Apply confirmed count'
+            }}
+          </button>
+        </p>
+      }
+    </section>
+  }
+  @if (pending()?.kind === 'APPLY' && !reviewed()) {
+    <button type="button" [disabled]="busy() || storageBlocked()" (click)="apply()">
+      Retry original apply
+    </button>
+  }
+  @if (record.operationId) {
+    <p><a [routerLink]="['/operations', record.operationId]">View adjustment operation</a></p>
+  }
+} @else if (error()) {
+  <button type="button" class="secondary" (click)="load()">Retry count</button>
+}
