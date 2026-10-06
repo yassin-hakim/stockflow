@@ -120,6 +120,10 @@ EOF
 
 chown -R root:root "$APP"
 chown -R stockflow:stockflow /opt/stockflow/data
+for component in product-service inventory-service sales-service audit-worker bff; do
+  chown stockflow:stockflow "$APP/apps/$component/.env"
+  chmod 0600 "$APP/apps/$component/.env"
+done
 systemctl daemon-reload
 systemctl enable stockflow-sales
 systemctl start stockflow-product stockflow-inventory stockflow-sales stockflow-bff stockflow-audit
