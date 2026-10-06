@@ -533,6 +533,15 @@
     .pos-cat-pill:hover { background: var(--soft); color: var(--ink); border-color: var(--muted); }
     .pos-cat-pill.active { background: var(--accent); color: white; border-color: var(--accent); }
 
+    .pos-item-card { background: white; border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; justify-content: space-between; gap: 14px; transition: border-color 0.15s, box-shadow 0.15s; }
+    .pos-item-card:hover { border-color: var(--control-line); box-shadow: 0 4px 12px rgba(23, 61, 57, 0.06); }
+    .pos-item-card .item-header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .pos-item-card .item-cat { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+    .pos-item-card .item-price { font-size: 16px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .pos-item-card .item-name { font-size: 15px; font-weight: 650; line-height: 1.35; margin: 4px 0 2px; }
+    .pos-item-card .item-recipe { font-size: 12px; color: var(--muted); line-height: 1.4; }
+    .pos-item-card .add-btn { width: 100%; min-height: 40px; font-size: 13px; font-weight: 650; }
+
     .cart-line { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
     .cart-line strong { font-size: 14px; font-weight: 650; }
     .stepper { display: inline-flex; align-items: center; border: 1px solid var(--control-line); border-radius: var(--radius-sm); background: var(--canvas); overflow: hidden; }
