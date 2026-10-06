@@ -103,9 +103,9 @@
               <tr>
                 <td>{{ movement.createdAt | date: 'medium' }}</td>
                 <td>{{ movement.type }}</td>
-                <td class="numeric">
+                <td class="numeric" [class.movement-add]="movement.type === 'ADD'" [class.movement-remove]="movement.type === 'REMOVE'">
                   {{ movement.type === 'ADD' ? '+' : '−' }}{{ movement.quantity }}
-                  {{ stock.product.unit }}
+                  <span class="muted">{{ stock.product.unit }}</span>
                 </td>
                 <td>{{ movementReason(movement.reason) }}</td>
               </tr>
