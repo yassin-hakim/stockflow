@@ -1,0 +1,152 @@
+{
+  "suffix": "muwvwysu",
+  "first": {
+    "id": "d2135bc5-d1d2-413e-9de3-0899bbe5dece",
+    "name": "Catalog conflict muwvwysu",
+    "unit": "kg",
+    "category": "Verification",
+    "lowStockThreshold": 0,
+    "createdAt": "2026-10-06T16:20:04.16Z",
+    "updatedAt": "2026-10-06T16:20:04.16Z",
+    "sku": "SKU-MUWVWYSU",
+    "version": 0,
+    "archivedAt": null
+  },
+  "edited": {
+    "id": "d2135bc5-d1d2-413e-9de3-0899bbe5dece",
+    "name": "Coworker muwvwysu",
+    "unit": "kg",
+    "category": "Verification",
+    "lowStockThreshold": 5,
+    "createdAt": "2026-10-06T16:20:04.16Z",
+    "updatedAt": "2026-10-06T16:20:04.203Z",
+    "sku": "SKU-MUWVWYSU",
+    "version": 1,
+    "archivedAt": null
+  },
+  "duplicate": {
+    "error": {
+      "code": "SKU_CONFLICT",
+      "message": "This SKU is already assigned to another product.",
+      "requestId": "fe520b47-1657-4e81-b5ce-afebedda7268"
+    }
+  },
+  "stale": {
+    "error": {
+      "code": "VERSION_CONFLICT",
+      "message": "This product changed. Refresh before saving.",
+      "requestId": "d6fbeead-9e83-422b-a7ae-12e9bdb4e729"
+    }
+  },
+  "saved": {
+    "id": "d2135bc5-d1d2-413e-9de3-0899bbe5dece",
+    "name": "Coworker muwvwysu",
+    "unit": "kg",
+    "category": "Verification",
+    "lowStockThreshold": 5,
+    "createdAt": "2026-10-06T16:20:04.16Z",
+    "updatedAt": "2026-10-06T16:20:04.203Z",
+    "sku": "SKU-MUWVWYSU",
+    "version": 1,
+    "archivedAt": null
+  },
+  "browserProduct": {
+    "id": "bfa10a0f-4278-4986-9361-97074af44715",
+    "name": "Browser conflict muwvwysu",
+    "unit": "kg",
+    "category": "Verification",
+    "lowStockThreshold": 0,
+    "createdAt": "2026-10-06T16:20:04.241Z",
+    "updatedAt": "2026-10-06T16:20:04.241Z",
+    "sku": "BROWSER-MUWVWYSU",
+    "version": 0,
+    "archivedAt": null
+  },
+  "assertions": [
+    "real Product HTTP normalized SKU conflict",
+    "real Product stale edit409 preserves committed record"
+  ],
+  "at": "2026-10-06T16:20:04.261Z",
+  "history": {
+    "item": {
+      "id": "c8340f1f-aef4-4974-bec4-4b25d87117d3",
+      "name": "Historical recipe muwvwysu",
+      "category": "Verification",
+      "priceMinor": 500,
+      "currency": "USD",
+      "ingredients": [
+        {
+          "productId": "bfa10a0f-4278-4986-9361-97074af44715",
+          "name": "Coworker saved coffee",
+          "unit": "kg",
+          "quantity": 0.018
+        }
+      ],
+      "version": 100,
+      "recipeRevision": 101,
+      "archivedAt": null,
+      "createdAt": "2026-10-06T16:21:56.171Z",
+      "updatedAt": "2026-10-06T16:21:57.925Z"
+    },
+    "original": {
+      "name": "Historical recipe muwvwysu",
+      "category": "Verification",
+      "priceMinor": 400,
+      "currency": "USD",
+      "ingredients": [
+        {
+          "productId": "bfa10a0f-4278-4986-9361-97074af44715",
+          "name": "Coworker saved coffee",
+          "unit": "kg",
+          "quantity": 0.018
+        }
+      ],
+      "id": "c8340f1f-aef4-4974-bec4-4b25d87117d3",
+      "version": 0,
+      "recipeRevision": 1,
+      "archivedAt": null,
+      "createdAt": "2026-10-06T16:21:56.171Z",
+      "updatedAt": "2026-10-06T16:21:56.171Z"
+    },
+    "oldest": {
+      "name": "Historical recipe muwvwysu",
+      "category": "Verification",
+      "priceMinor": 400,
+      "currency": "USD",
+      "ingredients": [
+        {
+          "productId": "bfa10a0f-4278-4986-9361-97074af44715",
+          "name": "Coworker saved coffee",
+          "unit": "kg",
+          "quantity": 0.018
+        }
+      ],
+      "id": "c8340f1f-aef4-4974-bec4-4b25d87117d3",
+      "version": 0,
+      "recipeRevision": 1,
+      "archivedAt": null,
+      "createdAt": "2026-10-06T16:21:56.171Z",
+      "updatedAt": "2026-10-06T16:21:56.171Z"
+    }
+  },
+  "browserSaved": {
+    "id": "bfa10a0f-4278-4986-9361-97074af44715",
+    "name": "My retained mobile coffee",
+    "unit": "kg",
+    "category": "My mobile category",
+    "lowStockThreshold": 2,
+    "createdAt": "2026-10-06T16:20:04.241Z",
+    "updatedAt": "2026-10-06T16:22:53.434Z",
+    "sku": "BROWSER-MUWVWYSU",
+    "version": 3,
+    "archivedAt": null
+  },
+  "browserAssertions": [
+    "real browser VERSION_CONFLICT retains enteredname/category",
+    "latest savedproductcomparison shown",
+    "saveblockedbeforeexplicitreview",
+    "390px nohorizontaloverflow",
+    "checkbox autofocus Space Tab Enter saves version3",
+    "101 revision catalog directoldest1lookup USD4.00 currentUSD5.00"
+  ]
+}

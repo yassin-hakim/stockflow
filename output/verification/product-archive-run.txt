@@ -1,0 +1,33 @@
+### Result
+{"results":[{"width":1440,"productId":"ed61296d-2814-4068-8955-180dcb5acabe","initialQuantity":0,"initialMovements":0,"quantityAfterEditAndArchive":0.5,"movementsUnchanged":1,"archivedExcludedReceiving":true,"archivedExcludedMenu":true,"keyboardArchive":true},{"width":375,"productId":"fba14049-9730-4724-af85-5ab0839b7823","initialQuantity":0,"initialMovements":0,"quantityAfterEditAndArchive":0.5,"movementsUnchanged":1,"archivedExcludedReceiving":true,"archivedExcludedMenu":true,"keyboardArchive":true}]}
+### Ran Playwright code
+```js
+await (async(page)=>{
+ const base='http://localhost:4300',main='00000000-0000-4000-8000-000000000001',results=[];
+ for(const width of [1440,375]){
+  await page.setViewportSize({width,height:900});
+  const created=await page.request.post(base+'/api/products',{data:{name:'Archive acceptance '+width+' '+Date.now(),unit:'kg',category:'Archive test',lowStockThreshold:0}});if(created.status()!==201)throw Error('Createfailed');const product=await created.json();
+  const balanceUrl=base+'/api/stock/'+product.id+'?locationId='+main,historyUrl=base+'/api/stock/'+product.id+'/movements?locationId='+main;
+  if((await(await page.request.get(balanceUrl)).json()).quantity!==0||(await(await page.request.get(historyUrl)).json()).items.length!==0)throw Error('Created product changed stock');
+  const key=await page.evaluate(()=>crypto.randomUUID());await page.request.post(base+'/api/receipts',{headers:{'Idempotency-Key':key},data:{locationId:main,reference:'Archive test delivery',reason:'Keep historical stock',lines:[{productId:product.id,quantity:0.5,unitCostMinor:1000}]}});
+  const originalBalance=await(await page.request.get(balanceUrl)).json(),history=await(await page.request.get(historyUrl)).json();
+  const edit=await page.request.patch(base+'/api/products/'+product.id,{data:{name:product.name+' edited',category:product.category,lowStockThreshold:0.1,expectedVersion:product.version}});if(edit.status()!==200)throw Error('Editfailed '+await edit.text());const edited=await edit.json();
+  if((await(await page.request.get(balanceUrl)).json()).quantity!==originalBalance.quantity||JSON.stringify(await(await page.request.get(historyUrl)).json())!==JSON.stringify(history))throw Error('Product edit mutated Inventory');
+  await page.goto(base+'/products/'+product.id+'/edit');await page.getByRole('button',{name:'Archive product',exact:true}).click();
+  await page.getByRole('button',{name:'Confirm archive',exact:true}).focus();await page.keyboard.press('Enter');
+  await page.waitForFunction(()=>document.body.textContent.includes('Archived'));
+  const archived=await(await page.request.get(base+'/api/products/'+product.id)).json();if(!archived.archivedAt)throw Error('Archive failed');
+  if((await(await page.request.get(balanceUrl)).json()).quantity!==0.5||JSON.stringify(await(await page.request.get(historyUrl)).json())!==JSON.stringify(history))throw Error('Archive lost balance/history');
+  await page.goto(base+'/receipts/new');await page.getByLabel('Product 1',{exact:true}).waitFor();
+  if(await page.getByLabel('Product 1',{exact:true}).locator('option[value="'+product.id+'"]').count())throw Error('Archived ingredient selectable for new receiving');
+  await page.goto(base+'/menu/new');await page.getByLabel('Ingredient product',{exact:true}).waitFor();
+  if(await page.getByLabel('Ingredient product',{exact:true}).locator('option[value="'+product.id+'"]').count())throw Error('Archived ingredient selectable for new recipe');
+  results.push({width,productId:product.id,initialQuantity:0,initialMovements:0,quantityAfterEditAndArchive:0.5,movementsUnchanged:history.items.length,archivedExcludedReceiving:true,archivedExcludedMenu:true,keyboardArchive:true});
+ }
+ return{results};
+}
+)(page);
+```
+### Page
+- Page URL: http://localhost:4300/menu/new
+- Page Title: New menu item | StockFlow

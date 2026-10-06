@@ -1,0 +1,19 @@
+{
+  "fixture": "64e96892",
+  "from": "2026-10-06T16:35:27.140Z",
+  "coffeeId": "a331c58a-3ff8-4f8d-8eba-2d21a726f276",
+  "milkId": "ffa4d30c-f42b-4cd4-bf5c-1d693ac67da9",
+  "mainId": "fff45f82-5b57-4b48-990f-4ada882d72a8",
+  "barId": "78075a31-c9c9-4e36-8df5-1667b9c2aaed",
+  "menuId": "0ebb1496-5636-4cc3-adb4-96d29dee9964",
+  "saleId": "eded554b-6f08-4ef0-9f7d-f89ed39e3e26",
+  "receipt": "SF-EDED554B-6F08-4EF0-9F7D-F89ED39E3E26",
+  "receiptId": "c999e0e0-ff64-4dac-9ca1-abf4edb617b0",
+  "transferId": "44ef135f-d5e5-4243-baad-f05e2dbf6f10",
+  "wasteId": "57b01b94-6480-402d-8a35-49b6c678bef2",
+  "countId": "b88b0b25-5c60-46a0-8efe-a33117adca61",
+  "refundId": "9dad1a4c-4146-45b2-86d6-35b83190142a",
+  "restockId": "2a3bb68d-a056-4089-bbd3-448c08cd90a7",
+  "stockEvents": 14,
+  "salesEvents": 3
+}

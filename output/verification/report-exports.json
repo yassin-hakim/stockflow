@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "location": "+CSV Outlet b7f289c9",
+  "product": "=CSV \"Coffee\"",
+  "menu": "-CSV \"Latte\"",
+  "exports": [
+    "inventory",
+    "sales",
+    "profit-loss"
+  ],
+  "receiptId": "b48783e7-3282-41f9-b291-11f07f1b3f7c",
+  "saleId": "15ffb2c9-0779-4a68-88e3-cb6238d7fd17",
+  "rawUuidFree": true,
+  "formulaSafe": true
+}

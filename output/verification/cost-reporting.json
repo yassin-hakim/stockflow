@@ -1,0 +1,155 @@
+{
+  "product": {
+    "id": "146d7635-6259-49d1-b446-9e53c64089a0",
+    "name": "Cost check Arabica muwuj63g",
+    "unit": "kg",
+    "category": "Cost verification",
+    "lowStockThreshold": 0,
+    "createdAt": "2026-10-06T15:41:20.760Z",
+    "updatedAt": "2026-10-06T15:41:20.760Z",
+    "sku": null,
+    "version": 0,
+    "archivedAt": null
+  },
+  "store": {
+    "id": "3a24dc59-0df3-471b-ba2b-d193e47d437d",
+    "name": "Cost check store muwuj63g",
+    "version": 0,
+    "createdAt": "2026-10-06T15:41:20.789Z",
+    "updatedAt": "2026-10-06T15:41:20.789Z"
+  },
+  "bar": {
+    "id": "4647aa40-c34c-4197-ad66-25b6d3f14ce7",
+    "name": "Cost check counter muwuj63g",
+    "version": 0,
+    "createdAt": "2026-10-06T15:41:20.802Z",
+    "updatedAt": "2026-10-06T15:41:20.802Z"
+  },
+  "menu": {
+    "name": "Cost check espresso muwuj63g",
+    "category": "Cost verification",
+    "priceMinor": 500,
+    "currency": "USD",
+    "ingredients": [
+      {
+        "productId": "146d7635-6259-49d1-b446-9e53c64089a0",
+        "name": "Cost check Arabica muwuj63g",
+        "unit": "kg",
+        "quantity": 0.1
+      }
+    ],
+    "id": "c6cb311e-2425-4b40-84b0-1f7e92d196e8",
+    "version": 0,
+    "recipeRevision": 1,
+    "archivedAt": null,
+    "createdAt": "2026-10-06T15:41:20.953Z",
+    "updatedAt": "2026-10-06T15:41:20.953Z"
+  },
+  "sale": {
+    "id": "b3d178da-5773-4b49-94bb-b325bc76e050",
+    "status": "COMPLETED",
+    "locationId": "4647aa40-c34c-4197-ad66-25b6d3f14ce7",
+    "lines": [
+      {
+        "id": "df71a383-3fcd-4819-bcb2-1e8eea07a9a0",
+        "menuItemId": "c6cb311e-2425-4b40-84b0-1f7e92d196e8",
+        "name": "Cost check espresso muwuj63g",
+        "quantity": 2,
+        "priceMinor": 500,
+        "totalMinor": 1000,
+        "recipeRevision": 1,
+        "ingredients": [
+          {
+            "productId": "146d7635-6259-49d1-b446-9e53c64089a0",
+            "name": "Cost check Arabica muwuj63g",
+            "unit": "kg",
+            "quantity": 0.1
+          }
+        ]
+      }
+    ],
+    "totalMinor": 1000,
+    "currency": "USD",
+    "version": 2,
+    "tender": "CASH",
+    "receiptReference": "SF-B3D178DA-5773-4B49-94BB-B325BC76E050",
+    "createdAt": "2026-10-06T15:41:20.973Z",
+    "updatedAt": "2026-10-06T15:41:21.049Z",
+    "operationId": "f6cf6047-dd5b-403a-99a8-d78d3e1acf08",
+    "ingredientCostMinor": 300
+  },
+  "receipt": {
+    "id": "a58e9b6d-23a5-4ce0-abde-9b00c7d8debf",
+    "kind": "RECEIPT",
+    "status": "COMMITTED",
+    "currency": "USD",
+    "createdAt": "2026-10-06T15:41:20.838Z",
+    "reference": "First cost delivery",
+    "reason": "Cost reporting verification",
+    "locationId": "3a24dc59-0df3-471b-ba2b-d193e47d437d",
+    "movements": [
+      {
+        "id": "e52dd1e9-061f-4578-ac94-ce584ff403b3",
+        "productId": "146d7635-6259-49d1-b446-9e53c64089a0",
+        "locationId": "3a24dc59-0df3-471b-ba2b-d193e47d437d",
+        "operationId": "a58e9b6d-23a5-4ce0-abde-9b00c7d8debf",
+        "type": "ADD",
+        "cause": "RECEIPT",
+        "reason": "Cost reporting verification",
+        "createdAt": "2026-10-06T15:41:20.837Z",
+        "costMinor": 2000,
+        "quantity": 2,
+        "resultingQuantity": 2
+      }
+    ],
+    "costMinor": 2000,
+    "receivedLines": [
+      {
+        "productId": "146d7635-6259-49d1-b446-9e53c64089a0",
+        "quantity": 2,
+        "unitCostMinor": 1000
+      }
+    ]
+  },
+  "from": "2026-10-06T15:41:20.668Z",
+  "to": "2026-10-06T15:41:22.468Z",
+  "report": {
+    "from": "2026-10-06T15:41:20.668Z",
+    "to": "2026-10-06T15:41:22.237Z",
+    "locationId": "4647aa40-c34c-4197-ad66-25b6d3f14ce7",
+    "currency": "USD",
+    "grossSalesMinor": 1000,
+    "refundMinor": 1000,
+    "netRevenueMinor": 0,
+    "ingredientCostMinor": 150,
+    "knownCostMinor": 150,
+    "missingCostRecords": 0,
+    "grossProfitMinor": -150,
+    "nextCursor": "eyJ0aW1lIjoiMjAyNi0xMC0wNlQxNTo0MToyMS4yMTFaIiwiaWQiOiJiZjNiMmI3MC1hMjAzLTRmZDItOTAyZS1hNjhjN2U4NmNmZjciLCJraW5kIjoiUkVGVU5EIn0",
+    "items": [
+      {
+        "id": "bf3b2b70-a203-4fd2-902e-a68c7e86cff7",
+        "saleId": "b3d178da-5773-4b49-94bb-b325bc76e050",
+        "amountMinor": 500,
+        "currency": "USD",
+        "restock": true,
+        "operationId": "dd95049e-5948-4e06-bf5a-2ff62d363fa7",
+        "ingredientCostMinor": 150,
+        "kind": "REFUND",
+        "occurredAt": "2026-10-06T15:41:21.211Z",
+        "locationId": "4647aa40-c34c-4197-ad66-25b6d3f14ce7",
+        "reference": "SF-B3D178DA-5773-4B49-94BB-B325BC76E050",
+        "lines": [
+          {
+            "name": "Cost check espresso muwuj63g",
+            "quantity": 1,
+            "priceMinor": 500
+          }
+        ],
+        "revenueMinor": -500,
+        "costMinor": -150,
+        "grossProfitMinor": -350
+      }
+    ]
+  }
+}

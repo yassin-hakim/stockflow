@@ -6,5 +6,7 @@ node_modules/
 .tools/
 .playwright-cli/
 output/playwright/
+output/verification/runtime-*/
+output/verification/restock-restart-*/
 .verification-clean/
 *.tsbuildinfo

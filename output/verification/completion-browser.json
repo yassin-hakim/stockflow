@@ -1,0 +1,117 @@
+{
+  "verifiedAt": "2026-10-06T16:30:19.106Z",
+  "history": {
+    "script": ".tools/completion-history-browser.js",
+    "assertions": [
+      "namedlocationbreakdown",
+      "locationpaging",
+      "displayedselectionmatchesreadlocation",
+      "movementpurpose/datefilterresponse",
+      "operationtype/location/datefilterresponse",
+      "invalidperiodsblocked",
+      "selectionpreservedafterreload"
+    ],
+    "views": [
+      {
+        "route": "product",
+        "width": 1440,
+        "overflow": false
+      },
+      {
+        "route": "operations",
+        "width": 1440,
+        "overflow": false
+      },
+      {
+        "route": "product",
+        "width": 375,
+        "overflow": false
+      },
+      {
+        "route": "operations",
+        "width": 375,
+        "overflow": false
+      }
+    ],
+    "errors": [],
+    "apiRequests": 36
+  },
+  "migration": {
+    "originalKey": "cb1cb227-108a-4c7e-baf2-e20d5e680390",
+    "script": ".tools/migrated-command-browser.js",
+    "storageCleared": true,
+    "legacyEndpoint": true,
+    "requestHasNoAddedLocation": true,
+    "widths": [
+      1440,
+      375
+    ],
+    "overflow": false,
+    "keyPreserved": true,
+    "movements": 1,
+    "originalProduct": "e60dcfbb-d8bf-49cc-9fe2-d2eca5007b63",
+    "inputPreserved": true,
+    "quantity": 40
+  },
+  "transferRecovery": {
+    "transport": "Real verifier proxy forwards owner POST, retains committed response, returns 503 UPSTREAM_UNAVAILABLE to simulate lost response without browser automatic reconnect replay",
+    "results": [
+      {
+        "width": 1440,
+        "key": "9d207e7c-fd7b-49b1-a3bf-9098b7fee1cb",
+        "destination": "fe94dc31-1832-453a-b10b-7ab449bd15f4",
+        "quantity": 0.25,
+        "pairedMovements": 2,
+        "keyPreserved": true,
+        "inputPreserved": true,
+        "stockOnce": true,
+        "overflow": false
+      },
+      {
+        "width": 375,
+        "key": "23857354-f77a-422a-a310-a3a42f605dd7",
+        "destination": "114d499c-77f7-4b5f-bf43-a7cc02bfbd7f",
+        "quantity": 0.25,
+        "pairedMovements": 2,
+        "keyPreserved": true,
+        "inputPreserved": true,
+        "stockOnce": true,
+        "overflow": false
+      }
+    ]
+  },
+  "countRecovery": {
+    "results": [
+      {
+        "width": 1440,
+        "countId": "6e68317a-b01a-4897-8293-1d723d6fb47f",
+        "applyKey": "adb136dc-0488-4b33-b5ff-2baa66e21b92",
+        "originalIdentity": true,
+        "status": "APPLIED",
+        "countMovements": 1,
+        "staleId": "f26e910c-b2b5-4f8e-8524-b31f4c6510fd",
+        "recorded": 0.2,
+        "counted": 0.15,
+        "difference": -0.05,
+        "balanceAfterStale": 0.201,
+        "staleRetainsComparison": true,
+        "overflow": false
+      },
+      {
+        "width": 375,
+        "countId": "9a50330b-4718-4420-91fd-851fa9034e57",
+        "applyKey": "2267c6bb-6576-4776-a8ec-8ed8b319ec30",
+        "originalIdentity": true,
+        "status": "APPLIED",
+        "countMovements": 1,
+        "staleId": "8c3c3ea7-ce75-44da-8473-49aa5621d328",
+        "recorded": 0.2,
+        "counted": 0.15,
+        "difference": -0.05,
+        "balanceAfterStale": 0.201,
+        "staleRetainsComparison": true,
+        "overflow": false
+      }
+    ]
+  }
+}

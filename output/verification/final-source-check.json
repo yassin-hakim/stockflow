@@ -1,0 +1,24 @@
+{
+  "verifiedAt": "2026-10-06T16:52:28.141Z",
+  "sourceCopy": "C:/Projects/interview/.tools/expansion-review-20261006",
+  "sourceManifest": {
+    "files": 304,
+    "sha256": "ba89b9e539f5bbc9496adbbadb24403ba46bb38b4832d5a687c7e0ea4de296d3"
+  },
+  "cleanCopy": {
+    "npmCi": "passed; 526 packages",
+    "configure": "passed; five existing environment files preserved byte-for-byte",
+    "build": "passed; six apps; Angular initial 299.94 kB",
+    "backendTests": "passed; 24 files, 176 tests, 0 skipped",
+    "frontendTests": "passed; 15 files, 82 tests",
+    "boundaries": "passed",
+    "docs": "passed; 531 local Markdown links"
+  },
+  "workingTreeChecks": {
+    "backendTests": "passed; 24 files, 176 tests, 0 skipped",
+    "build": "passed; six apps; Angular initial 299.94 kB",
+    "boundaries": "passed",
+    "docs": "passed; 531 local Markdown links",
+    "reportExports": "passed; inventory, sales and profit-loss CSVs are UUID-free and formula-safe"
+  }
+}

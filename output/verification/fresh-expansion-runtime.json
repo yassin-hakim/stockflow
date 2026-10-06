@@ -1,0 +1,53 @@
+{
+  "runId": "7abeadd6826948d583cab5d6acb8c6b8",
+  "sourceRoot": "C:\\Projects\\interview\\.tools\\expansion-review-20261006",
+  "databases": {
+    "product": "stockflow_runtime_7abeadd6826948d583cab5d6acb8c6b8_product",
+    "inventory": "stockflow_runtime_7abeadd6826948d583cab5d6acb8c6b8_inventory",
+    "sales": "stockflow_runtime_7abeadd6826948d583cab5d6acb8c6b8_sales",
+    "audit": "stockflow_runtime_7abeadd6826948d583cab5d6acb8c6b8_audit"
+  },
+  "ports": {
+    "bff": 3100,
+    "product": 3101,
+    "inventory": 3102,
+    "sales": 3103,
+    "fault": 3104,
+    "web": 4300,
+    "nats": 14222,
+    "monitor": 18222
+  },
+  "legacy": {
+    "productId": "e60dcfbb-d8bf-49cc-9fe2-d2eca5007b63",
+    "key": "cb1cb227-108a-4c7e-baf2-e20d5e680390",
+    "quantity": 40,
+    "reason": "Migrated browser command",
+    "eventId": "742b96ad-e7f4-42ed-b41a-aeb8a1552eaa"
+  },
+  "productId": "0d114a57-06af-4dee-afbb-b2517cbe6eb3",
+  "menuId": "b058df0a-e4dc-4d0a-a9d9-7b7d9a7133ad",
+  "received": "f9ccf4cd-6039-4991-8c3f-ba468c26ceb0",
+  "sales": [
+    "3e1238c3-9e17-4fff-8c9b-34de11825522",
+    "5ffb91b8-82bf-4ea3-a599-8cd41c00fb45",
+    "77043599-f184-43cc-bc2b-7fd37a79ba29",
+    "f8220ceb-792b-4805-9b70-afcc83b02d98",
+    "ec03b5ff-9288-4aed-b06f-c31fb4223633"
+  ],
+  "stockEvents": 8,
+  "salesEvents": 5,
+  "assertions": [
+    "pre-migration exact replay",
+    "migration rerun",
+    "v1/v2 eventual audit and dedup",
+    "Sales crash before dispatch",
+    "Sales crash after actual Inventory commit",
+    "frozen recipe and price",
+    "one receipt/consumption/event per sale",
+    "NATS offline business commits and audit recovery",
+    "Audit process restart recovery",
+    "real Audit Mongo validation failure recovery",
+    "clean source six-process runtime and built frontend"
+  ],
+  "completedAt": "2026-10-06T16:14:12.165Z"
+}

@@ -1,0 +1,81 @@
+{
+  "sourceRoot": "C:/Projects/interview/.tools/expansion-review-20261006",
+  "sourceManifest": "source-manifest.json (304 files; SHA-256 manifest ba89b9e539f5bbc9496adbbadb24403ba46bb38b4832d5a687c7e0ea4de296d3)",
+  "isolation": "Current working-tree source copy with no reused node_modules, build output or environment files; not a remote Git clone",
+  "commands": [
+    {
+      "exitCode": 0,
+      "command": "npm ci --no-audit --no-fund",
+      "result": "526 packages installed"
+    },
+    {
+      "exitCode": 0,
+      "command": "npm run configure",
+      "result": "Five missing backend env files created"
+    },
+    {
+      "exitCode": 0,
+      "command": "npm run configure after adding reviewer comment to BFF env",
+      "result": "SHA256 before and after equal; customization preserved byte-for-byte"
+    },
+    {
+      "exitCode": 0,
+      "command": "npm run build",
+      "result": "All six apps built; Angular initial299.94kB"
+    },
+    {
+      "exitCode": 0,
+      "command": "npm run build -w @stockflow/frontend after selector fixes",
+      "result": "Angular initial299.94kB"
+    },
+    {
+      "exitCode": 0,
+      "command": "npm test with PRODUCT_TEST_MONGO_URI and SALES_TEST_MONGO_URI",
+      "result": "24 files,176 tests,0 skipped"
+    },
+    {
+      "exitCode": 0,
+      "command": "npm run check:boundaries",
+      "result": "Passed"
+    },
+    {
+      "exitCode": 0,
+      "command": "npm run check:docs",
+      "result": "531 local links passed"
+    }
+  ],
+  "runtimeEvidence": "output/verification/fresh-expansion-runtime.json",
+  "envPreservation": [
+    {
+      "path": "apps/product-service/.env",
+      "beforeSha256": "9143CADC2C2DC96CD8B348AF065C513A9B0DA2422E122E3A9CC554BDBD391BE0",
+      "afterSha256": "9143CADC2C2DC96CD8B348AF065C513A9B0DA2422E122E3A9CC554BDBD391BE0",
+      "equal": true
+    },
+    {
+      "path": "apps/inventory-service/.env",
+      "beforeSha256": "05A4E8D2731DA7A5C1973F6FA730661FCEBDD082D71A082AC73B5AC0DFDC6623",
+      "afterSha256": "05A4E8D2731DA7A5C1973F6FA730661FCEBDD082D71A082AC73B5AC0DFDC6623",
+      "equal": true
+    },
+    {
+      "path": "apps/sales-service/.env",
+      "beforeSha256": "EF19E816C95C6E0DE138D6D86D3408D8593E48B9B6AB0E0DDB5C6F37D3451933",
+      "afterSha256": "EF19E816C95C6E0DE138D6D86D3408D8593E48B9B6AB0E0DDB5C6F37D3451933",
+      "equal": true
+    },
+    {
+      "path": "apps/bff/.env",
+      "beforeSha256": "C71C5F174B99A8212324EDDCE7CB686C8480B2B1B8D3CD3F83DDFBF0D10ED4E9",
+      "afterSha256": "C71C5F174B99A8212324EDDCE7CB686C8480B2B1B8D3CD3F83DDFBF0D10ED4E9",
+      "equal": true
+    },
+    {
+      "path": "apps/audit-worker/.env",
+      "beforeSha256": "05CABFFD1D4241AC4C57E3203BB55606DE88AF0F6453E593C9EC07053A86FCD9",
+      "afterSha256": "05CABFFD1D4241AC4C57E3203BB55606DE88AF0F6453E593C9EC07053A86FCD9",
+      "equal": true
+    }
+  ],
+  "verifiedAt": "2026-10-06T16:20:35.1192738Z"
+}

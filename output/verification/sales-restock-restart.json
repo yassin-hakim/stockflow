@@ -1,0 +1,144 @@
+{
+  "runId": "773cdcb4a30c4212a8af82ee4569e007",
+  "generatedAt": "2026-10-06T16:32:36.896Z",
+  "ports": {
+    "product": 50421,
+    "inventory": 50422,
+    "sales": 50423,
+    "proxy": 50424,
+    "unavailableNats": 50425
+  },
+  "databases": {
+    "product": "stockflow_restock_773cdcb4a30c4212a8af82ee4569e007_product",
+    "inventory": "stockflow_restock_773cdcb4a30c4212a8af82ee4569e007_inventory",
+    "sales": "stockflow_restock_773cdcb4a30c4212a8af82ee4569e007_sales"
+  },
+  "isolation": "Only own generated databases/processes; no shared broker publication.",
+  "cases": [
+    {
+      "phase": "before",
+      "oldPid": 33476,
+      "newPid": 22116,
+      "saleId": "c0592419-1a0c-40f2-8faa-43a42beeaf92",
+      "refundId": "74dd1c2e-6c7b-4e53-9576-3dcaccd9dc58",
+      "operationId": "45e146d4-5826-4350-95db-7ff2f8298881",
+      "pendingStatusBeforeTermination": "REFUND_PENDING",
+      "committedBeforeRestart": 0,
+      "recoveredStatus": "COMPLETED",
+      "returnedMillis": 100,
+      "frozenPriceMinor": 500,
+      "inventoryCommands": 1,
+      "inventoryMovements": 1,
+      "refundEvents": 1,
+      "receiptUnchanged": true,
+      "overlapBlocked": true,
+      "exactReplay": true
+    },
+    {
+      "phase": "after",
+      "oldPid": 22116,
+      "newPid": 11916,
+      "saleId": "c0592419-1a0c-40f2-8faa-43a42beeaf92",
+      "refundId": "8d9050d7-f356-405e-bd87-925c77e98bc8",
+      "operationId": "131b849e-7693-4d71-8e36-848f5e9cebdf",
+      "pendingStatusBeforeTermination": "REFUND_PENDING",
+      "committedBeforeRestart": 1,
+      "recoveredStatus": "COMPLETED",
+      "returnedMillis": 100,
+      "frozenPriceMinor": 500,
+      "inventoryCommands": 1,
+      "inventoryMovements": 1,
+      "refundEvents": 1,
+      "receiptUnchanged": true,
+      "overlapBlocked": true,
+      "exactReplay": true
+    }
+  ],
+  "final": {
+    "receipts": 1,
+    "consumptions": 1,
+    "stockReturns": 2,
+    "refunds": 3,
+    "noRestockUnchangedBalance": true,
+    "cumulativeLimitEnforced": true,
+    "finalBalanceMillis": 4900,
+    "terminalCheckoutReplay": true,
+    "originalReceipt": {
+      "id": "c0592419-1a0c-40f2-8faa-43a42beeaf92",
+      "status": "COMPLETED",
+      "locationId": "00000000-0000-4000-8000-000000000001",
+      "lines": [
+        {
+          "id": "24713027-95f6-4f47-8312-f5689f187114",
+          "menuItemId": "6555974c-65c2-427b-98b5-83d3105abf41",
+          "name": "Restart espresso",
+          "quantity": 3,
+          "priceMinor": 500,
+          "totalMinor": 1500,
+          "recipeRevision": 1,
+          "ingredients": [
+            {
+              "productId": "8a54040d-1be6-49e2-8c90-464bec7e126f",
+              "name": "Restock restart 773cdcb4a30c4212a8af82ee4569e007",
+              "unit": "kg",
+              "quantity": 0.1
+            }
+          ]
+        }
+      ],
+      "totalMinor": 1500,
+      "currency": "USD",
+      "version": 2,
+      "tender": "CASH",
+      "receiptReference": "SF-C0592419-1A0C-40F2-8FAA-43A42BEEAF92",
+      "createdAt": "2026-10-06T16:32:45.504Z",
+      "updatedAt": "2026-10-06T16:32:45.614Z",
+      "operationId": "b3c15139-b705-482a-be4e-e4569828c686",
+      "ingredientCostMinor": 300,
+      "issuedAt": "2026-10-06T16:32:45.614Z"
+    }
+  },
+  "requiredSources": {
+    "productProcessStopped": {
+      "httpStatus": 503,
+      "code": "SERVICE_UNAVAILABLE",
+      "draftUnchanged": true,
+      "checkoutAttempts": 0,
+      "stockCommands": 0
+    },
+    "missingMenuBusinessError": {
+      "httpStatus": 409,
+      "code": "MENU_ITEM_UNAVAILABLE"
+    },
+    "inventoryProcessStopped": {
+      "httpStatus": 202,
+      "status": "CHECKOUT_PENDING",
+      "automaticRecovery": "COMPLETED",
+      "receipts": 1,
+      "consumptions": 1
+    },
+    "insufficientStockBusinessRejection": {
+      "status": "REJECTED",
+      "code": "INSUFFICIENT_STOCK",
+      "movements": 0,
+      "receipts": 0
+    }
+  },
+  "mongoFinalization": {
+    "errorStatus": 503,
+    "errorCode": "SERVICE_UNAVAILABLE",
+    "validationFailure": "Actual Mongo collection validator rejects COMPLETED refund replacement.",
+    "pendingPersisted": true,
+    "localTransactionRolledBack": true,
+    "oldPid": 11916,
+    "newPid": 49016,
+    "automaticRecovery": "COMPLETED",
+    "inventoryCommands": 1,
+    "inventoryMovements": 1,
+    "refundEvents": 1,
+    "receiptUnchanged": true,
+    "exactReplay": true
+  },
+  "passed": true,
+  "cleanedOwnDatabasesAndProcesses": true
+}
