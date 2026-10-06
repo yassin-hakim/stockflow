@@ -527,6 +527,24 @@
       margin-bottom: 14px;
     }
 
+    /* POS Stepper & Cart */
+    .pos-category-pills { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 20px; }
+    .pos-cat-pill { background: white; border: 1px solid var(--control-line); padding: 7px 16px; border-radius: 20px; font-size: 13px; font-weight: 650; color: var(--muted); cursor: pointer; white-space: nowrap; transition: all 0.12s; }
+    .pos-cat-pill:hover { background: var(--soft); color: var(--ink); border-color: var(--muted); }
+    .pos-cat-pill.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+    .cart-line { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+    .cart-line strong { font-size: 14px; font-weight: 650; }
+    .stepper { display: inline-flex; align-items: center; border: 1px solid var(--control-line); border-radius: var(--radius-sm); background: var(--canvas); overflow: hidden; }
+    .stepper button { width: 30px; height: 30px; min-height: 30px; padding: 0; background: transparent; border: 0; color: var(--ink); font-size: 15px; font-weight: 700; cursor: pointer; transition: background 0.1s; }
+    .stepper button:hover { background: var(--soft); }
+    .stepper .stepper-val { width: 36px; height: 30px; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: white; display: flex; align-items: center; justify-content: center; font-size: 13.5px; font-weight: 650; font-variant-numeric: tabular-nums; }
+    .cart-line .remove-btn { padding: 4px 8px; min-height: 28px; font-size: 12px; color: var(--muted); background: transparent; border: 1px solid transparent; border-radius: 4px; cursor: pointer; }
+    .cart-line .remove-btn:hover { color: var(--danger); background: #fbece8; }
+    .tender-pills { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .tender-pill { height: 40px; min-height: 40px; border: 1px solid var(--control-line); background: white; color: var(--ink); font-size: 13px; font-weight: 650; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.12s; display: inline-flex; align-items: center; justify-content: center; }
+    .tender-pill.active { background: var(--ink); color: white; border-color: var(--ink); }
+
     /* Design Tokens Showcase */
     .token-grid {
       display: grid;
