@@ -1,11 +1,16 @@
 <app-section-nav area="operations" />
 <div class="page-head">
   <div>
-    <span class="eyebrow">Stock records</span>
+    <span class="eyebrow">Stock records · Audit trail</span>
     <h1>{{ id ? 'Stock operation' : 'Operations' }}</h1>
     <p class="muted">Inspect recorded deliveries, transfers, waste and count adjustments.</p>
   </div>
-  <a class="button" routerLink="/receipts/new">Receive delivery</a>
+  <div class="action-links">
+    @if (id) {
+      <a class="button secondary" routerLink="/operations">← All operations</a>
+    }
+    <a class="button" routerLink="/receipts/new">Receive delivery</a>
+  </div>
 </div>
 @if (error()) {
   <p class="error" role="alert">{{ error() | readable: names() }}</p>
@@ -15,51 +20,118 @@
   <p role="status">Loading operations…</p>
 } @else if (!error()) {
   @if (selected(); as operation) {
-    <section class="panel" style="margin-bottom: 24px;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px;">
+    <!-- Official Operation Audit Card -->
+    <section class="panel" style="margin-bottom: 28px; border-top: 3px solid var(--accent); padding: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">
         <div>
-          <h2>{{ label(operation) }}</h2>
-          <p class="muted" style="margin-bottom: 0;">{{ kindName(operation.kind) }} · {{ operation.createdAt | date: 'medium' }}</p>
+          <span class="eyebrow" style="margin-bottom: 4px;">{{ kindName(operation.kind) }} · Audit record</span>
+          <h2 style="font-size: 20px; margin-bottom: 4px;">{{ label(operation) }}</h2>
+          <p class="muted" style="margin-bottom: 0; font-size: 13px;">
+            Recorded on {{ operation.createdAt | date: 'medium' }}
+          </p>
         </div>
-        <span class="status" [class]="'status ' + (operation.status === 'COMMITTED' ? 'OK' : 'OUT')">{{ operation.status }}</span>
-      </div>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; padding: 16px; background: var(--canvas); border: 1px solid var(--line); border-radius: var(--radius-sm); margin-bottom: 16px;">
-        <div>
-          <small class="muted" style="display: block; text-transform: uppercase; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px;">Location</small>
-          <strong>{{ location(operation.locationId) }}</strong>
-          @if (operation.destinationLocationId) {
-            <span class="muted"> → </span><strong>{{ location(operation.destinationLocationId) }}</strong>
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <span class="status" [class]="'status ' + (operation.status === 'COMMITTED' ? 'OK' : 'OUT')">
+            {{ operation.status }}
+          </span>
+          @if (linkedSale(); as sale) {
+            <a class="button secondary" [routerLink]="['/sales', sale.id]" style="min-height: 36px; padding: 6px 14px; font-size: 13px;">
+              View sale and recorded items →
+            </a>
           }
         </div>
+      </div>
+
+      <!-- Structured Metadata Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; padding: 18px; background: var(--canvas); border: 1px solid var(--line); border-radius: var(--radius-sm); margin-bottom: 8px;">
+        <div>
+          <span class="eyebrow" style="font-size: 10px; margin-bottom: 4px;">Storage Location</span>
+          <strong style="font-size: 14.5px;">{{ location(operation.locationId) }}</strong>
+          @if (operation.destinationLocationId) {
+            <span class="muted"> → </span><strong style="font-size: 14.5px;">{{ location(operation.destinationLocationId) }}</strong>
+          }
+        </div>
+
+        <div>
+          <span class="eyebrow" style="font-size: 10px; margin-bottom: 4px;">Transaction Type</span>
+          <span style="font-size: 14.5px; font-weight: 600;">{{ kindName(operation.kind) }}</span>
+        </div>
+
+        <div>
+          <span class="eyebrow" style="font-size: 10px; margin-bottom: 4px;">Timestamp</span>
+          <span style="font-size: 14px; font-variant-numeric: tabular-nums;">{{ operation.createdAt | date: 'medium' }}</span>
+        </div>
+
         @if (reason(operation)) {
           <div>
-            <small class="muted" style="display: block; text-transform: uppercase; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px;">Reason / Notes</small>
-            <span>{{ reason(operation) }}</span>
+            <span class="eyebrow" style="font-size: 10px; margin-bottom: 4px;">Reason / Notes</span>
+            <span style="font-size: 14px;">{{ reason(operation) }}</span>
           </div>
         }
       </div>
+
       @if (operation.error) {
-        <p class="error">{{ operation.error.message | readable: names() }}</p>
+        <div class="error" role="alert" style="margin-top: 16px;">
+          <strong>Operation Alert:</strong> {{ operation.error.message | readable: names() }}
+        </div>
       }
     </section>
-    @if(operation.kind==='RECEIPT'){
-      <section class="panel"><h2>Received costs</h2><p>Delivery cost: <strong>{{operation.costMinor==null?'Unrecorded':(operation.costMinor/100|currency:operation.currency)}}</strong></p><ul class="record-list">@for(line of operation.receivedLines??[];track line.productId){<li><strong>{{product(line.productId)}}</strong><p>{{line.quantity}} {{unit(line.productId)}} · {{line.unitCostMinor===null?'Unrecorded cost':(line.unitCostMinor/100|currency:operation.currency)}} per {{unit(line.productId)}}</p></li>}</ul></section>
+
+    @if (operation.kind === 'RECEIPT') {
+      <section class="panel" style="margin-bottom: 28px;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px;">
+          <h2>Received delivery costs</h2>
+          <span>Delivery cost: <strong>{{ operation.costMinor == null ? 'Unrecorded' : (operation.costMinor / 100 | currency:operation.currency) }}</strong></span>
+        </div>
+        <div class="panel table-wrap desktop-table" style="padding: 0;">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Product</th>
+                <th scope="col" class="numeric">Quantity received</th>
+                <th scope="col" class="numeric">Unit cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (line of operation.receivedLines ?? []; track line.productId) {
+                <tr>
+                  <td><strong>{{ product(line.productId) }}</strong></td>
+                  <td class="numeric">{{ line.quantity }} {{ unit(line.productId) }}</td>
+                  <td class="numeric">{{ line.unitCostMinor === null ? 'Unrecorded cost' : (line.unitCostMinor / 100 | currency:operation.currency) }} / {{ unit(line.productId) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
     }
-    @if (linkedSale(); as sale) {
-      <p><a [routerLink]="['/sales', sale.id]">View sale and recorded items</a></p>
-    }
-    <h2>Committed movements</h2>
+
+    <!-- Committed Movements Section -->
+    <div class="list-heading">
+      <div>
+        <h2>Committed movements</h2>
+        <p class="muted" style="font-size: 13px; margin: 4px 0 0;">
+          Direct inventory ledger adjustments generated by this operation.
+        </p>
+      </div>
+      <span style="font-size: 13px; color: var(--muted);">
+        {{ operation.movements.length }} {{ operation.movements.length === 1 ? 'movement' : 'movements' }}
+      </span>
+    </div>
+
     @if (!operation.movements.length) {
-      <p>No stock movements were committed.</p>
+      <div class="panel">
+        <p class="muted" style="margin-bottom: 0;">No stock movements were committed.</p>
+      </div>
     } @else {
-      <div class="table-wrap desktop-table">
+      <div class="panel table-wrap desktop-table">
         <table>
           <thead>
             <tr>
-              <th scope="col">Product</th>
-              <th scope="col">Location</th>
-              <th scope="col" class="numeric">Change</th>
-              <th scope="col" class="numeric">Resulting stock</th>
+              <th scope="col" style="width: 38%;">Product</th>
+              <th scope="col" style="width: 28%;">Location</th>
+              <th scope="col" class="numeric" style="width: 17%;">Change</th>
+              <th scope="col" class="numeric" style="width: 17%;">Resulting stock</th>
             </tr>
           </thead>
           <tbody>
@@ -69,15 +141,16 @@
                   <a
                     [routerLink]="['/products', movement.productId]"
                     [queryParams]="{ location: movement.locationId }"
-                    >{{ product(movement.productId) }}</a
+                    style="font-weight: 650;"
                   >
+                    {{ product(movement.productId) }}
+                  </a>
                 </td>
                 <td>{{ location(movement.locationId) }}</td>
-                <td class="numeric">
-                  {{ movement.type === 'ADD' ? '+' : '−' }}{{ movement.quantity }}
-                  {{ unit(movement.productId) }}
+                <td class="numeric" [class.movement-add]="movement.type === 'ADD'" [class.movement-remove]="movement.type !== 'ADD'">
+                  {{ movement.type === 'ADD' ? '+' : '−' }}{{ movement.quantity }} {{ unit(movement.productId) }}
                 </td>
-                <td class="numeric">
+                <td class="numeric" style="font-weight: 650;">
                   {{ movement.resultingQuantity }} {{ unit(movement.productId) }}
                 </td>
               </tr>
@@ -85,20 +158,30 @@
           </tbody>
         </table>
       </div>
+
       <div class="stack mobile-list">
         @for (movement of operation.movements; track movement.id) {
-          <article class="panel">
-            <h3>{{ product(movement.productId) }}</h3>
-            <p>
-              {{ location(movement.locationId) }} · {{ movement.type === 'ADD' ? '+' : '−'
-              }}{{ movement.quantity }} {{ unit(movement.productId) }}
-            </p>
-            <p>Resulting stock: {{ movement.resultingQuantity }} {{ unit(movement.productId) }}</p>
+          <article class="panel" style="padding: 16px 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px;">
+              <div>
+                <strong>{{ product(movement.productId) }}</strong>
+                <p class="muted" style="margin: 3px 0 0; font-size: 13px;">{{ location(movement.locationId) }}</p>
+              </div>
+              <span [class.movement-add]="movement.type === 'ADD'" [class.movement-remove]="movement.type !== 'ADD'" style="font-size: 15px; font-weight: 700;">
+                {{ movement.type === 'ADD' ? '+' : '−' }}{{ movement.quantity }} {{ unit(movement.productId) }}
+              </span>
+            </div>
+            <div style="font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px;">
+              Resulting stock: <strong>{{ movement.resultingQuantity }} {{ unit(movement.productId) }}</strong>
+            </div>
           </article>
         }
       </div>
     }
-    <p><a routerLink="/operations">All operations</a></p>
+
+    <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line);">
+      <a class="button secondary" routerLink="/operations">← All operations</a>
+    </div>
   } @else {
     <div class="inventory-filters">
       <div class="field">
