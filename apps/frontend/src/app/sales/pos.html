@@ -64,123 +64,201 @@
     <fieldset [disabled]="locked() || draft()?.status === 'COMPLETED'">
       <div class="inventory-filters">
         <div class="field">
-          <label for="pos-location">Consume ingredients from</label
-          ><select id="pos-location" formControlName="locationId">
+          <label for="pos-location">Consume ingredients from</label>
+          <select id="pos-location" formControlName="locationId">
             @for (location of locations(); track location.id) {
               <option [value]="location.id">{{ location.name }}</option>
             }
           </select>
         </div>
         <div class="field">
-          <label for="pos-search">Find menu item</label
-          ><input
+          <label for="pos-search">Find menu item</label>
+          <input
             id="pos-search"
             type="search"
+            placeholder="Search by name or category…"
             [value]="search()"
             (input)="pager.reset();search.set($any($event.target).value)"
           />
         </div>
       </div>
     </fieldset>
+
+    <!-- Category Filter Pills -->
+    @if (categories().length > 1) {
+      <div class="pos-category-pills" role="tablist" aria-label="Menu categories">
+        <button
+          type="button"
+          class="pos-cat-pill"
+          [class.active]="!search()"
+          (click)="filterCategory('ALL')"
+        >
+          All items ({{ menu().length }})
+        </button>
+        @for (cat of categories(); track cat) {
+          <button
+            type="button"
+            class="pos-cat-pill"
+            [class.active]="search().toLowerCase() === cat.toLowerCase()"
+            (click)="filterCategory(cat)"
+          >
+            {{ cat }}
+          </button>
+        }
+      </div>
+    }
+
     @if (lines.length) {
       <p class="mobile-list cart-shortcut">
-        <a class="button secondary" href="#pos-cart"
-          >{{ itemCount() }} {{ itemCount() === 1 ? 'item' : 'items' }}
+        <a class="button secondary" href="#pos-cart">
+          {{ itemCount() }} {{ itemCount() === 1 ? 'item' : 'items' }}
           @if (draft() && (reviewed() || draft()?.status === 'COMPLETED')) {
             <span> · {{ draft()!.totalMinor / 100 | currency: draft()!.currency }}</span>
           }
-          · View cart</a
-        >
+          · View cart
+        </a>
       </p>
     }
+
     <div class="pos-layout">
+      <!-- Left Column: Menu Items Grid -->
       <section>
-        <h2>Menu</h2>
-        <ul class="menu-list">
+        <div class="list-heading" style="margin-top: 0; margin-bottom: 16px;">
+          <h2>Menu items</h2>
+          <span>{{ available().length }} available</span>
+        </div>
+
+        <div class="pos-menu-grid">
           @for (item of pager.slice(available()); track item.id) {
-            <li>
+            <article class="pos-item-card">
               <div>
-                <strong>{{ item.name }}</strong
-                ><small
-                  >{{ item.category }} ·
-                  {{ item.priceMinor / 100 | currency: item.currency }}</small
-                >
+                <div class="item-header">
+                  <span class="item-cat">{{ item.category }}</span>
+                  <strong class="item-price">{{ item.priceMinor / 100 | currency: item.currency }}</strong>
+                </div>
+                <h3 class="item-name">{{ item.name }}</h3>
+                @if (item.ingredients.length) {
+                  <p class="item-recipe">
+                    Recipe:
+                    @for (ing of item.ingredients; track ing.productId; let last = $last) {
+                      {{ ing.quantity }} {{ ing.unit }} {{ ing.name }}{{ last ? '' : ' · ' }}
+                    }
+                  </p>
+                }
               </div>
               <button
-                class="secondary"
+                class="button secondary add-btn"
                 type="button"
                 [disabled]="locked() || draft()?.status === 'COMPLETED'"
                 (click)="add(item)"
                 [attr.aria-label]="'Add ' + item.name"
               >
-                Add item
+                + Add to order
               </button>
-            </li>
+            </article>
           } @empty {
-            <li>No matching active menu items. <a routerLink="/menu">Manage menu</a></li>
+            <div class="panel" style="grid-column: 1 / -1; padding: 24px;">
+              <p class="muted" style="margin-bottom: 0;">No matching active menu items. <a routerLink="/menu">Manage menu</a></p>
+            </div>
           }
-        </ul>
-      <app-pagination [total]="available().length" [page]="pager.current(available().length)" [size]="pager.size()" [hasMore]="false" [busy]="loading() || pager.busy()" (pageChange)="pager.page.set($event)" (sizeChange)="pager.resize($event)" />
-</section>
+        </div>
+
+        <app-pagination [total]="available().length" [page]="pager.current(available().length)" [size]="pager.size()" [hasMore]="false" [busy]="loading() || pager.busy()" (pageChange)="pager.page.set($event)" (sizeChange)="pager.resize($event)" />
+      </section>
+
+      <!-- Right Column: Tactile Order Cart -->
       <section class="panel" id="pos-cart">
         <div class="cart-heading">
-          <h2>Current order</h2>
+          <div>
+            <h2>Current order</h2>
+            <small class="muted" style="display: block; font-size: 12px; margin-top: 2px;">
+              Deducting from {{ locationName(form.controls.locationId.value) }}
+            </small>
+          </div>
           <span>{{ itemCount() }} {{ itemCount() === 1 ? 'item' : 'items' }}</span>
         </div>
+
         @if (!lines.length) {
-          <p class="muted">Add a menu item to start an order.</p>
+          <p class="muted" style="padding: 24px 0; text-align: center;">Your order is empty.<br><small>Click any menu item to begin.</small></p>
         }
+
         <fieldset [disabled]="locked() || draft()?.status === 'COMPLETED'" formArrayName="lines">
           @for (line of lines.controls; track line.controls.menuItemId.value; let index = $index) {
             <div class="cart-line" [formGroupName]="index">
-              <strong>{{ name(line.controls.menuItemId.value) }}</strong>
-              <div class="field">
-                <label [for]="'cart-quantity-' + index">Item count</label
-                ><input
+              <div>
+                <strong>{{ name(line.controls.menuItemId.value) }}</strong>
+                @if (line.controls.quantity.invalid && line.controls.quantity.touched) {
+                  <small class="error" style="display: block; margin-top: 2px;">Enter a whole positive count.</small>
+                }
+              </div>
+
+              <!-- Quantity Stepper Control -->
+              <div class="stepper" [attr.aria-label]="'Quantity for ' + name(line.controls.menuItemId.value)">
+                <button
+                  type="button"
+                  [disabled]="locked() || draft()?.status === 'COMPLETED'"
+                  (click)="decrement(index)"
+                  aria-label="Decrease count"
+                >
+                  −
+                </button>
+                <input
                   [id]="'cart-quantity-' + index"
                   type="number"
                   min="1"
                   step="1"
                   inputmode="numeric"
                   formControlName="quantity"
+                  [attr.aria-label]="'Item count for ' + name(line.controls.menuItemId.value)"
                 />
-                @if (line.controls.quantity.invalid && line.controls.quantity.touched) {
-                  <small class="error">Enter a whole positive count.</small>
-                }
+                <button
+                  type="button"
+                  [disabled]="locked() || draft()?.status === 'COMPLETED'"
+                  (click)="increment(index)"
+                  aria-label="Increase count"
+                >
+                  +
+                </button>
               </div>
+
               <button
-                class="secondary"
+                class="remove-btn"
                 type="button"
                 (click)="remove(index)"
                 [attr.aria-label]="'Remove ' + name(line.controls.menuItemId.value)"
               >
-                Remove
+                ✕
               </button>
             </div>
           }
         </fieldset>
+
         <div aria-live="polite" aria-atomic="true" [attr.aria-busy]="pricing() || priceQueued()">
           @if (draft() && (reviewed() || draft()?.status === 'COMPLETED')) {
             <div class="review">
-              <h3>{{ draft()?.status === 'COMPLETED' ? 'Completed sale' : 'Order total' }}</h3>
-              <ul class="record-list">
+              <h3 style="font-size: 14px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-bottom: 12px;">
+                {{ draft()?.status === 'COMPLETED' ? 'Completed sale' : 'Order breakdown' }}
+              </h3>
+              <ul class="record-list" style="margin-bottom: 0;">
                 @for (line of draft()!.lines; track line.id) {
-                  <li>
-                    {{ line.quantity }} × {{ line.name
-                    }}<span>{{ line.totalMinor / 100 | currency: draft()!.currency }}</span
-                    ><small
-                      >{{ line.priceMinor / 100 | currency: draft()!.currency }} each · recipe
-                      {{ line.recipeRevision }}</small
-                    >
+                  <li style="padding: 10px 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                      <span>{{ line.quantity }} × {{ line.name }}</span>
+                      <strong class="numeric">{{ line.totalMinor / 100 | currency: draft()!.currency }}</strong>
+                    </div>
+                    <small style="color: var(--muted); font-size: 12px;">
+                      {{ line.priceMinor / 100 | currency: draft()!.currency }} each · recipe rev {{ line.recipeRevision }}
+                    </small>
                   </li>
                 }
               </ul>
-              <p id="reviewed-total" tabindex="-1" class="sale-total">
-                Total {{ draft()!.totalMinor / 100 | currency: draft()!.currency }}
-              </p>
+              <div id="reviewed-total" tabindex="-1" class="sale-total">
+                <span>Total due</span>
+                <span>{{ draft()!.totalMinor / 100 | currency: draft()!.currency }}</span>
+              </div>
             </div>
           } @else if (lines.length) {
-            <p class="muted">
+            <p class="muted" style="padding: 16px 0; font-size: 13px;">
               {{
                 pricing() || priceQueued()
                   ? 'Updating total…'
@@ -191,26 +269,54 @@
             </p>
           }
         </div>
-        <div class="field">
-          <label for="pos-tender">Recorded tender</label
-          ><select
+
+        <!-- Tender Selection -->
+        <div class="field" style="margin-top: 16px; margin-bottom: 16px;">
+          <label for="pos-tender" style="font-size: 12px; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Tender method</label>
+          <div class="tender-pills" role="radiogroup" aria-label="Tender method">
+            <button
+              type="button"
+              class="tender-pill"
+              [class.active]="form.controls.tender.value === 'CASH'"
+              [disabled]="locked() || draft()?.status === 'COMPLETED'"
+              (click)="setTender('CASH')"
+            >
+              💵 Cash
+            </button>
+            <button
+              type="button"
+              class="tender-pill"
+              [class.active]="form.controls.tender.value === 'CARD'"
+              [disabled]="locked() || draft()?.status === 'COMPLETED'"
+              (click)="setTender('CARD')"
+            >
+              💳 Card
+            </button>
+          </div>
+          <select
             id="pos-tender"
             formControlName="tender"
+            class="sr-only"
             [attr.disabled]="locked() || draft()?.status === 'COMPLETED' ? true : null"
           >
             <option value="CASH">Cash</option>
-            <option value="CARD">Card</option></select
-          ><small>Records the tender label. Collect payment separately.</small>
+            <option value="CARD">Card</option>
+          </select>
+          <small style="color: var(--muted); font-size: 12px;">Records the tender label. Collect payment separately.</small>
         </div>
+
         @if (draft()?.status === 'COMPLETED') {
-          <a class="button" [routerLink]="['/sales', draft()!.id, 'receipt']">Open receipt</a
-          ><button class="secondary new-sale" type="button" (click)="newSale()">
-            Start new sale
-          </button>
+          <div style="display: grid; gap: 10px; margin-top: 16px;">
+            <a class="button" [routerLink]="['/sales', draft()!.id, 'receipt']">Open receipt</a>
+            <button class="secondary new-sale" type="button" (click)="newSale()">
+              Start new sale
+            </button>
+          </div>
         } @else {
-          <div class="action-links">
+          <div style="margin-top: 16px;">
             <button
               type="button"
+              class="checkout-btn"
               [disabled]="
                 locked() ||
                 pricing() ||
@@ -229,11 +335,17 @@
                     ? 'Updating total…'
                     : 'Complete sale'
               }}
+              @if (draft() && (reviewed() || draft()?.status === 'COMPLETED')) {
+                <span> · {{ draft()!.totalMinor / 100 | currency: draft()!.currency }}</span>
+              }
             </button>
           </div>
         }
+
         @if (draft()) {
-          <p class="muted reference">{{ draft()!.status }} · {{ label(draft()!) }}</p>
+          <p class="muted reference" style="font-size: 12px; margin-top: 16px; margin-bottom: 0;">
+            {{ draft()!.status }} · {{ label(draft()!) }}
+          </p>
         }
       </section>
     </div>

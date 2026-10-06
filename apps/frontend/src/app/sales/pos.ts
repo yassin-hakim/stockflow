@@ -53,6 +53,39 @@ export class Pos {
         `${i.name} ${i.category}`.toLowerCase().includes(this.search().toLowerCase()),
     ),
   );
+  readonly categories = computed(() => {
+    const set = new Set<string>();
+    for (const item of this.menu()) {
+      if (item.category && !item.archivedAt) set.add(item.category);
+    }
+    return Array.from(set).sort();
+  });
+  filterCategory(cat: string) {
+    this.pager.reset();
+    this.search.set(cat === 'ALL' ? '' : cat);
+  }
+  increment(index: number) {
+    if (this.locked() || this.draft()?.status === 'COMPLETED') return;
+    const line = this.lines.at(index);
+    if (line) line.controls.quantity.setValue(line.controls.quantity.value + 1);
+  }
+  decrement(index: number) {
+    if (this.locked() || this.draft()?.status === 'COMPLETED') return;
+    const line = this.lines.at(index);
+    if (!line) return;
+    if (line.controls.quantity.value > 1) {
+      line.controls.quantity.setValue(line.controls.quantity.value - 1);
+    } else {
+      this.remove(index);
+    }
+  }
+  setTender(tender: 'CASH' | 'CARD') {
+    if (this.locked() || this.draft()?.status === 'COMPLETED') return;
+    this.form.controls.tender.setValue(tender);
+  }
+  locationName(id: string): string {
+    return this.locations().find((l) => l.id === id)?.name ?? 'Selected location';
+  }
   readonly locked = computed(
     () =>
       this.busy() ||
