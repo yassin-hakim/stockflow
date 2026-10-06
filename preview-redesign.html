@@ -1002,67 +1002,138 @@
         </div>
       </div>
 
+      <!-- Filters & Category Navigation -->
+      <div class="filters" style="margin-bottom: 16px;">
+        <div class="field" style="margin-bottom: 0;">
+          <label for="pos-deduct-loc">Consume ingredients from</label>
+          <select id="pos-deduct-loc" onchange="updatePosDeductLoc(this.value)">
+            <option value="Espresso Bar">Espresso Bar</option>
+            <option value="Main Store">Main Store</option>
+            <option value="Kitchen Pantry">Kitchen Pantry</option>
+          </select>
+        </div>
+        <div class="field" style="margin-bottom: 0;">
+          <label for="pos-menu-search">Find menu item</label>
+          <input type="search" id="pos-menu-search" placeholder="Search menu…" oninput="filterPosMenu(this.value)">
+        </div>
+      </div>
+
+      <!-- Category Filter Pills -->
+      <div class="pos-category-pills" role="tablist">
+        <button type="button" class="pos-cat-pill active" id="pill-all" onclick="selectPosCat('ALL')">All items (4)</button>
+        <button type="button" class="pos-cat-pill" id="pill-coffee" onclick="selectPosCat('Coffee')">Hot Coffee</button>
+        <button type="button" class="pos-cat-pill" id="pill-cold" onclick="selectPosCat('Cold')">Cold Drinks</button>
+        <button type="button" class="pos-cat-pill" id="pill-bakery" onclick="selectPosCat('Bakery')">Bakery</button>
+      </div>
+
       <div class="pos-layout">
         <!-- Menu Catalog Grid -->
         <div>
-          <h2 style="font-size: 16px; margin-bottom: 14px;">Menu Catalog</h2>
-          <div class="menu-grid">
-            <div class="menu-card" onclick="addToOrder('Single Origin Espresso', 3.50, 0.018, 0)">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px;">
+            <h2 style="font-size: 16px; margin: 0;">Menu items</h2>
+            <span class="muted" style="font-size: 13px;" id="pos-menu-count">4 available</span>
+          </div>
+
+          <div class="menu-grid" id="pos-menu-grid">
+            <div class="pos-item-card" data-cat="Coffee" data-name="Espresso">
               <div>
-                <div class="menu-title">Espresso</div>
-                <div class="menu-price">$3.50</div>
+                <div class="item-header">
+                  <span class="item-cat">Hot Coffee</span>
+                  <span class="item-price">$3.50</span>
+                </div>
+                <div class="item-name">Single Origin Espresso</div>
+                <div class="item-recipe">Recipe: 0.018 kg Coffee</div>
               </div>
-              <div class="menu-recipe">Recipe: <strong>0.018 kg</strong> Coffee</div>
+              <button class="btn btn-secondary add-btn" onclick="addToOrder('Single Origin Espresso', 3.50, '0.018 kg Coffee')">+ Add to order</button>
             </div>
-            <div class="menu-card" onclick="addToOrder('Oat Milk Latte', 5.00, 0.018, 0.200)">
+
+            <div class="pos-item-card" data-cat="Coffee" data-name="Oat Milk Latte">
               <div>
-                <div class="menu-title">Oat Milk Latte</div>
-                <div class="menu-price">$5.00</div>
+                <div class="item-header">
+                  <span class="item-cat">Hot Coffee</span>
+                  <span class="item-price">$5.00</span>
+                </div>
+                <div class="item-name">Oat Milk Latte</div>
+                <div class="item-recipe">Recipe: 0.018 kg Coffee, 0.200 L Oat Milk</div>
               </div>
-              <div class="menu-recipe">Recipe: <strong>0.018 kg</strong> Coffee, <strong>0.200 L</strong> Oat Milk</div>
+              <button class="btn btn-secondary add-btn" onclick="addToOrder('Oat Milk Latte', 5.00, '0.018 kg Coffee · 0.200 L Oat Milk')">+ Add to order</button>
             </div>
-            <div class="menu-card" onclick="addToOrder('Cold Brew (12oz)', 4.00, 0.030, 0)">
+
+            <div class="pos-item-card" data-cat="Cold" data-name="Cold Brew">
               <div>
-                <div class="menu-title">Cold Brew</div>
-                <div class="menu-price">$4.00</div>
+                <div class="item-header">
+                  <span class="item-cat">Cold Drinks</span>
+                  <span class="item-price">$4.00</span>
+                </div>
+                <div class="item-name">Cold Brew (12oz)</div>
+                <div class="item-recipe">Recipe: 0.030 kg Coffee</div>
               </div>
-              <div class="menu-recipe">Recipe: <strong>0.030 kg</strong> Coffee</div>
+              <button class="btn btn-secondary add-btn" onclick="addToOrder('Cold Brew (12oz)', 4.00, '0.030 kg Coffee')">+ Add to order</button>
             </div>
-            <div class="menu-card" onclick="addToOrder('Sourdough Toast with Butter', 4.50, 0, 0)">
+
+            <div class="pos-item-card" data-cat="Bakery" data-name="Sourdough Toast">
               <div>
-                <div class="menu-title">Sourdough Toast</div>
-                <div class="menu-price">$4.50</div>
+                <div class="item-header">
+                  <span class="item-cat">Bakery</span>
+                  <span class="item-price">$4.50</span>
+                </div>
+                <div class="item-name">Sourdough Toast</div>
+                <div class="item-recipe">Recipe: 1.000 pcs Bread, 0.020 kg Butter</div>
               </div>
-              <div class="menu-recipe">Recipe: <strong>1.000 pcs</strong> Bread</div>
+              <button class="btn btn-secondary add-btn" onclick="addToOrder('Sourdough Toast', 4.50, '1.000 pcs Bread')">+ Add to order</button>
             </div>
           </div>
         </div>
 
-        <!-- Order Ticket & Stock Deduction -->
-        <div class="order-ticket">
-          <h3>Active Order</h3>
-          <div id="ticket-items">
-            <div class="ticket-item">
-              <span>1× Oat Milk Latte</span>
-              <strong class="numeric">$5.00</strong>
+        <!-- Tactile Cart Order Slip -->
+        <div class="order-ticket" id="pos-cart">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 14px; border-bottom: 1px solid var(--line);">
+            <div>
+              <h3 style="margin: 0; font-size: 17px; border: 0; padding: 0;">Current order</h3>
+              <small class="muted" style="display: block; font-size: 12px; margin-top: 3px;" id="pos-cart-deduct-label">
+                Deducting from Espresso Bar
+              </small>
+            </div>
+            <span id="pos-cart-count-badge" style="font-size: 12px; font-weight: 600; color: var(--muted); background: var(--canvas); padding: 3px 8px; border-radius: 12px;">1 item</span>
+          </div>
+
+          <div id="ticket-lines" style="margin-bottom: 12px;">
+            <!-- Rendered by JS -->
+          </div>
+
+          <!-- Order Breakdown -->
+          <div style="padding-top: 14px; border-top: 1px solid var(--line);">
+            <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 8px;">Order breakdown</div>
+            <div id="ticket-breakdown">
+              <!-- Rendered by JS -->
             </div>
           </div>
 
-          <div style="display: flex; justify-content: space-between; margin-top: 16px; padding-top: 12px; border-top: 2px solid var(--line); font-size: 16px; font-weight: 700;">
-            <span>Total</span>
-            <span id="ticket-total" class="numeric">$5.00</span>
+          <!-- Total due -->
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin: 16px 0 12px; padding: 14px 0; border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line);">
+            <span style="font-size: 15px; font-weight: 600; color: var(--muted);">Total due</span>
+            <span id="ticket-total" class="numeric" style="font-size: 24px; font-weight: 700; color: var(--ink);">$5.00</span>
           </div>
 
+          <!-- Deduction Notice -->
           <div class="deduction-notice">
             <strong>Stock Deduction Preview:</strong><br>
             <span id="deduction-preview">0.018 kg Coffee · 0.200 L Oat Milk</span> will be decremented atomically on checkout.
           </div>
 
-          <div class="tender-group">
-            <button class="btn btn-secondary" onclick="alert('Cash tender selected')">Cash</button>
-            <button class="btn btn-secondary" onclick="alert('Card tender selected')">Card</button>
+          <!-- Tender Method -->
+          <div style="margin: 16px 0 14px;">
+            <label style="display: block; font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 6px;">Tender method</label>
+            <div class="tender-pills">
+              <button type="button" class="tender-pill active" id="tender-cash" onclick="setPosTender('CASH')">💵 Cash</button>
+              <button type="button" class="tender-pill" id="tender-card" onclick="setPosTender('CARD')">💳 Card</button>
+            </div>
+            <small style="color: var(--muted); font-size: 11.5px; display: block;">Records the tender label. Collect payment separately.</small>
           </div>
-          <button class="btn" style="width: 100%;" onclick="checkoutOrder()">Complete Checkout</button>
+
+          <button class="btn" id="pos-checkout-btn" style="width: 100%; min-height: 46px; font-size: 15px; font-weight: 700;" onclick="checkoutOrder()">
+            Complete sale · <span id="btn-total-span">$5.00</span>
+          </button>
         </div>
       </div>
     </section>
@@ -1542,23 +1613,177 @@
       tbody.prepend(tr);
     }
 
-    let orderTotal = 5.00;
-    function addToOrder(name, price, coffee, milk) {
-      orderTotal += price;
-      document.getElementById('ticket-total').innerText = '$' + orderTotal.toFixed(2);
-      const list = document.getElementById('ticket-items');
-      const item = document.createElement('div');
-      item.className = 'ticket-item';
-      item.innerHTML = `<span>1× ${name}</span><strong class="numeric">$${price.toFixed(2)}</strong>`;
-      list.appendChild(item);
+    let cartItems = [
+      { name: 'Oat Milk Latte', price: 5.00, qty: 1, recipe: '0.018 kg Coffee · 0.200 L Oat Milk' }
+    ];
+    let selectedTender = 'CASH';
+
+    function renderCart() {
+      const linesEl = document.getElementById('ticket-lines');
+      const breakdownEl = document.getElementById('ticket-breakdown');
+      const totalEl = document.getElementById('ticket-total');
+      const btnTotalEl = document.getElementById('btn-total-span');
+      const countBadge = document.getElementById('pos-cart-count-badge');
+      const deductionPreview = document.getElementById('deduction-preview');
+      const checkoutBtn = document.getElementById('pos-checkout-btn');
+
+      if (!linesEl) return;
+
+      if (!cartItems.length) {
+        linesEl.innerHTML = '<p class="muted" style="padding: 20px 0; text-align: center; font-size: 13px;">Your order is empty.<br><small>Click "+ Add to order" on any menu card.</small></p>';
+        breakdownEl.innerHTML = '<p class="muted" style="font-size: 12px; margin: 0;">No items in cart.</p>';
+        totalEl.innerText = '$0.00';
+        btnTotalEl.innerText = '$0.00';
+        countBadge.innerText = '0 items';
+        deductionPreview.innerText = 'No inventory will be deducted.';
+        checkoutBtn.disabled = true;
+        checkoutBtn.style.opacity = '0.5';
+        checkoutBtn.style.cursor = 'not-allowed';
+        return;
+      }
+
+      checkoutBtn.disabled = false;
+      checkoutBtn.style.opacity = '1';
+      checkoutBtn.style.cursor = 'pointer';
+
+      let total = 0;
+      let totalQty = 0;
+      let linesHtml = '';
+      let breakdownHtml = '';
+      let deductions = [];
+
+      cartItems.forEach((item, idx) => {
+        const lineTotal = item.price * item.qty;
+        total += lineTotal;
+        totalQty += item.qty;
+        if (item.recipe) deductions.push(`${item.qty}× (${item.recipe})`);
+
+        linesHtml += `
+          <div class="cart-line">
+            <div>
+              <strong>${item.name}</strong>
+              <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">$${item.price.toFixed(2)} each</div>
+            </div>
+            <div class="stepper">
+              <button type="button" onclick="decrementOrder(${idx})">−</button>
+              <div class="stepper-val">${item.qty}</div>
+              <button type="button" onclick="incrementOrder(${idx})">+</button>
+            </div>
+            <button type="button" class="remove-btn" onclick="removeOrder(${idx})" title="Remove item">✕</button>
+          </div>
+        `;
+
+        breakdownHtml += `
+          <div style="display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0;">
+            <span>${item.qty} × ${item.name}</span>
+            <strong class="numeric">$${lineTotal.toFixed(2)}</strong>
+          </div>
+        `;
+      });
+
+      linesEl.innerHTML = linesHtml;
+      breakdownEl.innerHTML = breakdownHtml;
+      totalEl.innerText = '$' + total.toFixed(2);
+      btnTotalEl.innerText = '$' + total.toFixed(2);
+      countBadge.innerText = totalQty + (totalQty === 1 ? ' item' : ' items');
+      deductionPreview.innerText = deductions.length ? deductions.join(' · ') : '0 items';
+    }
+
+    function addToOrder(name, price, recipe) {
+      const existing = cartItems.find(i => i.name === name);
+      if (existing) {
+        existing.qty++;
+      } else {
+        cartItems.push({ name, price, qty: 1, recipe });
+      }
+      renderCart();
+    }
+
+    function incrementOrder(idx) {
+      if (cartItems[idx]) {
+        cartItems[idx].qty++;
+        renderCart();
+      }
+    }
+
+    function decrementOrder(idx) {
+      if (cartItems[idx]) {
+        if (cartItems[idx].qty > 1) {
+          cartItems[idx].qty--;
+        } else {
+          cartItems.splice(idx, 1);
+        }
+        renderCart();
+      }
+    }
+
+    function removeOrder(idx) {
+      if (cartItems[idx]) {
+        cartItems.splice(idx, 1);
+        renderCart();
+      }
+    }
+
+    function setPosTender(tender) {
+      selectedTender = tender;
+      document.getElementById('tender-cash').classList.toggle('active', tender === 'CASH');
+      document.getElementById('tender-card').classList.toggle('active', tender === 'CARD');
+    }
+
+    function updatePosDeductLoc(loc) {
+      document.getElementById('pos-cart-deduct-label').innerText = 'Deducting from ' + loc;
+    }
+
+    function selectPosCat(cat) {
+      ['all', 'coffee', 'cold', 'bakery'].forEach(c => {
+        const el = document.getElementById('pill-' + c);
+        if (el) el.classList.remove('active');
+      });
+      if (cat === 'ALL') document.getElementById('pill-all').classList.add('active');
+      else if (cat === 'Coffee') document.getElementById('pill-coffee').classList.add('active');
+      else if (cat === 'Cold') document.getElementById('pill-cold').classList.add('active');
+      else if (cat === 'Bakery') document.getElementById('pill-bakery').classList.add('active');
+
+      const cards = document.querySelectorAll('#pos-menu-grid .pos-item-card');
+      let visible = 0;
+      cards.forEach(card => {
+        const cardCat = card.getAttribute('data-cat');
+        if (cat === 'ALL' || cardCat === cat) {
+          card.style.display = '';
+          visible++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+      document.getElementById('pos-menu-count').innerText = visible + ' available';
+    }
+
+    function filterPosMenu(val) {
+      const q = (val || '').toLowerCase();
+      const cards = document.querySelectorAll('#pos-menu-grid .pos-item-card');
+      let visible = 0;
+      cards.forEach(card => {
+        const name = (card.getAttribute('data-name') || '').toLowerCase();
+        const cat = (card.getAttribute('data-cat') || '').toLowerCase();
+        if (!q || name.includes(q) || cat.includes(q)) {
+          card.style.display = '';
+          visible++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+      document.getElementById('pos-menu-count').innerText = visible + ' available';
     }
 
     function checkoutOrder() {
-      alert('Order completed ($' + orderTotal.toFixed(2) + '). Ingredients decremented from stock atomically!');
-      document.getElementById('ticket-items').innerHTML = '';
-      orderTotal = 0;
-      document.getElementById('ticket-total').innerText = '$0.00';
+      if (!cartItems.length) return;
+      const total = cartItems.reduce((acc, i) => acc + (i.price * i.qty), 0);
+      alert(`Sale completed successfully! ($${total.toFixed(2)} via ${selectedTender}). Underlying recipe ingredients decremented atomically from ${document.getElementById('pos-deduct-loc').value}.`);
+      cartItems = [];
+      renderCart();
     }
+
+    renderCart();
 
     function filterTable() {
       const q = (document.getElementById('search-input').value || '').toLowerCase();
