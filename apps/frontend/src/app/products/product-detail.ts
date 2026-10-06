@@ -25,6 +25,15 @@ export class ProductDetail {
 
   productNames(){const product=this.overview()?.product;return product?[product]:[];}
   movementReason(reason:string){return recordReason(reason,this.productNames(),this.locations());}
+  selectLocation(id: string): void {
+    if (this.submitting() || this.uncertain() || this.recoveryBlocked()) return;
+    this.locationId.set(id);
+    void this.reload();
+  }
+  selectedLocationName(): string {
+    const loc = this.locations().find(l => l.id === this.locationId());
+    return loc?.name ?? 'Selected location';
+  }
   private readonly api = inject(BffApi);
   private readonly pendingCommands = inject(PendingStockCommands);
   private readonly route=inject(ActivatedRoute);

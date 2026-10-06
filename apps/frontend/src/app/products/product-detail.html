@@ -20,53 +20,146 @@
       @else { <a [routerLink]="['/products', stock.product.id, 'edit']">Edit product</a> }
     </div>
   </div>
-  <section class="stock-summary" aria-label="Current stock and location">
-    <div><h2>Stock on hand <span class="status" [class]="'status ' + stock.status">{{ stock.status }}</span></h2><p class="stock-quantity">{{ stock.quantity }} <span>{{ stock.product.unit }}</span></p><p class="muted">Low-stock threshold: {{ stock.product.lowStockThreshold }} {{ stock.product.unit }}</p></div>
-    <div><div class="field"><label for="product-location">Stock and action location</label><select id="product-location" [value]="locationId()" [disabled]="submitting() || uncertain() || recoveryBlocked()" (change)="locationId.set($any($event.target).value);reload()">@for(location of locations();track location.id){<option [value]="location.id" [selected]="location.id === locationId()">{{location.name}}</option>}</select></div>
-    @if(total();as aggregate){<p class="muted">Restaurant total: {{aggregate.quantity}} {{stock.product.unit}} · {{aggregate.status}}. Actions affect the selected location.</p>}</div>
+  <!-- Dual Metric Summary: Restaurant Aggregate vs Active Location -->
+  <section class="panel" style="margin-bottom: 28px; padding: 0; overflow: hidden; border-top: 3px solid var(--accent);" aria-label="Current stock and location">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0;">
+      @if (total(); as aggregate) {
+        <div style="padding: 24px; border-right: 1px solid var(--line);">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+            <span class="eyebrow" style="margin-bottom: 0;">Restaurant Total (All Locations)</span>
+            <span class="status" [class]="'status ' + aggregate.status">{{ aggregate.status }}</span>
+          </div>
+          <p class="stock-quantity" style="margin-bottom: 6px;">{{ aggregate.quantity }} <span>{{ stock.product.unit }}</span></p>
+          <p class="muted" style="font-size: 13px; margin-bottom: 0;">
+            Across {{ aggregate.locations?.length ?? locations().length }} configured storage areas · Low-stock alert at {{ stock.product.lowStockThreshold }} {{ stock.product.unit }}
+          </p>
+        </div>
+      }
+
+      <div style="padding: 24px; background: #fafbf9;">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+          <span class="eyebrow" style="margin-bottom: 0;">Active Working Location</span>
+          <span class="status" [class]="'status ' + stock.status">{{ stock.status }}</span>
+        </div>
+        <p class="stock-quantity" style="margin-bottom: 12px;">{{ stock.quantity }} <span>{{ stock.product.unit }}</span></p>
+        <div class="field" style="margin-bottom: 0;">
+          <label for="product-location" style="font-size: 12px; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Manage location</label>
+          <select id="product-location" [value]="locationId()" [disabled]="submitting() || uncertain() || recoveryBlocked()" (change)="locationId.set($any($event.target).value);reload()">
+            @for (location of locations(); track location.id) {
+              <option [value]="location.id" [selected]="location.id === locationId()">{{ location.name }}</option>
+            }
+          </select>
+          <small style="color: var(--muted); font-size: 12px; margin-top: 4px;">Receiving and stock adjustments below apply to this location.</small>
+        </div>
+      </div>
+    </div>
   </section>
+
+  <!-- Unified Stock By Storage Location Table -->
   @if (total()?.locations; as balances) {
-    <section class="history-section" aria-label="Stock by location">
+    <section class="history-section" aria-label="Stock by location" style="margin-bottom: 32px;">
       <div class="list-heading">
-        <h2>Stock by location</h2>
+        <div>
+          <h2>Stock by storage location</h2>
+          <p class="muted" style="font-size: 13px; margin: 4px 0 0;">
+            Inventory balance in each area. Click "Manage" to switch the active location for stock operations.
+          </p>
+        </div>
         <span>{{ balances.length }} {{ balances.length === 1 ? 'location' : 'locations' }}</span>
       </div>
+
       <div class="panel table-wrap desktop-table">
         <table>
           <thead>
             <tr>
-              <th scope="col" style="width: 50%;">Storage location</th>
-              <th scope="col" class="numeric" style="width: 25%;">Balance</th>
-              <th scope="col" class="numeric" style="width: 25%;">Status</th>
+              <th scope="col" style="width: 44%;">Storage location</th>
+              <th scope="col" class="numeric" style="width: 22%;">Balance</th>
+              <th scope="col" style="width: 16%;">Status</th>
+              <th scope="col" class="numeric" style="width: 18%;">Manage</th>
             </tr>
           </thead>
           <tbody>
-            @for(balance of locationPager.slice(balances); track balance.locationId){
-              <tr>
-                <td><strong>{{ balance.name }}</strong></td>
-                <td class="numeric">{{ balance.quantity }} {{ stock.product.unit }}</td>
-                <td class="numeric"><span class="status" [class]="'status ' + balance.status">{{ balance.status }}</span></td>
+            @for (balance of locationPager.slice(balances); track balance.locationId) {
+              <tr [style.background]="balance.locationId === locationId() ? '#f0f5f2' : null">
+                <td>
+                  <strong>{{ balance.name }}</strong>
+                  @if (balance.locationId === locationId()) {
+                    <span style="display: inline-block; margin-left: 8px; font-size: 11px; font-weight: 700; color: var(--accent); background: #e0eee9; padding: 2px 7px; border-radius: 4px;">ACTIVE</span>
+                  }
+                </td>
+                <td class="numeric">
+                  <strong>{{ balance.quantity }}</strong> {{ stock.product.unit }}
+                </td>
+                <td>
+                  <span class="status" [class]="'status ' + balance.status">{{ balance.status }}</span>
+                </td>
+                <td class="numeric">
+                  @if (balance.locationId === locationId()) {
+                    <span style="font-size: 12.5px; color: var(--accent); font-weight: 650;">Selected</span>
+                  } @else {
+                    <button
+                      type="button"
+                      class="secondary"
+                      style="min-height: 32px; padding: 4px 12px; font-size: 12.5px;"
+                      [disabled]="submitting() || uncertain() || recoveryBlocked()"
+                      (click)="selectLocation(balance.locationId)"
+                    >
+                      Manage →
+                    </button>
+                  }
+                </td>
               </tr>
             }
           </tbody>
         </table>
       </div>
+
       <div class="stack mobile-list">
-        @for(balance of locationPager.slice(balances); track balance.locationId){
-          <article class="panel" style="padding: 14px 18px;">
-            <div style="display: flex; justify-content: space-between; align-items: baseline;">
-              <strong>{{ balance.name }}</strong>
-              <div style="text-align: right;">
-                <span style="font-weight: 650; font-variant-numeric: tabular-nums;">{{ balance.quantity }} {{ stock.product.unit }}</span>
-                <span class="status" [class]="'status ' + balance.status" style="margin-left: 8px;">{{ balance.status }}</span>
+        @for (balance of locationPager.slice(balances); track balance.locationId) {
+          <article class="panel" style="padding: 14px 18px;" [style.borderColor]="balance.locationId === locationId() ? 'var(--accent)' : null">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+              <div>
+                <strong>{{ balance.name }}</strong>
+                @if (balance.locationId === locationId()) {
+                  <span style="display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 700; color: var(--accent);">ACTIVE</span>
+                }
+                <p style="margin: 4px 0 0; font-size: 14px;">
+                  <span style="font-weight: 650; font-variant-numeric: tabular-nums;">{{ balance.quantity }} {{ stock.product.unit }}</span>
+                  <span class="status" [class]="'status ' + balance.status" style="margin-left: 8px;">{{ balance.status }}</span>
+                </p>
               </div>
+              @if (balance.locationId !== locationId()) {
+                <button
+                  type="button"
+                  class="secondary"
+                  style="min-height: 32px; padding: 4px 12px; font-size: 12.5px;"
+                  [disabled]="submitting() || uncertain() || recoveryBlocked()"
+                  (click)="selectLocation(balance.locationId)"
+                >
+                  Manage →
+                </button>
+              }
             </div>
           </article>
         }
       </div>
+
       <app-pagination label="Location stock pages" [total]="balances.length" [page]="locationPager.current(balances.length)" [size]="locationPager.size()" (pageChange)="locationPager.page.set($event)" (sizeChange)="locationPager.resize($event)" />
     </section>
   }
+
+  <!-- Active Location Adjustment Banner -->
+  <div class="panel" style="background: #fafbf9; border-left: 4px solid var(--accent); padding: 16px 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+    <div>
+      <strong style="font-size: 15px;">Applying stock operations to: {{ selectedLocationName() }}</strong>
+      <p class="muted" style="margin: 3px 0 0; font-size: 13px;">Inbound deliveries and kitchen deductions submitted below directly update balances for <strong>{{ selectedLocationName() }}</strong>.</p>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="font-size: 13px; color: var(--muted);">Location stock:</span>
+      <strong style="font-size: 15px;">{{ stock.quantity }} {{ stock.product.unit }}</strong>
+      <span class="status" [class]="'status ' + stock.status">{{ stock.status }}</span>
+    </div>
+  </div>
   @if (message()) {
     <p class="success" role="status">{{ message() }}</p>
   }
